@@ -1,0 +1,8 @@
+# BeatPay Virtual: no subir esto a GitHub
+# Ambiente virtual (se recrea con: python -m venv venv + pip install -r requirements.txt)
+venv/
+# Base de datos local (se regenera con: python manage.py migrate)
+db.sqlite3
+# Cachés de Python
+__pycache__/
+*.pyc
