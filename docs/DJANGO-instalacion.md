@@ -62,6 +62,6 @@ En VS Code además: `Ctrl+Shift+P` → `Python: Select Interpreter` → elegir `
 | `django-admin` / `python` no se reconoce | Python no está instalado o no está en el PATH (reinstala marcando "Add to PATH") |
 | `Activate.ps1` no se puede cargar | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
 | `pip` instala pero Django no aparece | Hay 2 Python: usa `python -m pip install -r requirements.txt` |
-| Página 404 en `dashboard.html` u otra | Faltan rutas: revisa `pagos/urls.py` (ya están las 9 creadas) |
+| Página 404 en `dashboard` u otra | Faltan rutas: revisa `pagos/urls.py` (ya están las 9 creadas) |
 | `db.sqlite3` no existe allá | Corre `python manage.py migrate` (paso 5 de arriba) |
 | Los cambios no se ven en el navegador | `Ctrl+F5` (caché). Al HTML/CSS/JS no hay que reiniciar nada |

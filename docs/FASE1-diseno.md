@@ -14,15 +14,15 @@ Flujos detallados en `FLUJO-sistema-pago.md` (este doc no los duplica).
 ## 3. Pantallas (qué hace cada una)
 | Archivo | Propósito |
 |---|---|
-| `index.html` | Landing: hero, beneficios, navbar PayPal [Iniciar sesión][Crear cuenta], CTA [Ver cuenta demo] |
-| `login.html` | Entrada con email + clave (ojo mostrar/ocultar) y validación |
-| `register.html` | Crea cuenta: nombre, email, clave, presupuesto opcional (`Ej: 100000`) |
-| `dashboard.html` | La cuenta: saldo, presupuesto, tarjeta holográfica, últimas 3 + [Ver todo][Restablecer demo] |
-| `cargar.html` | Suma fondos (mín $1.000) con confirmación + boleta folio/imprimir/txt |
-| `pagar.html` | Paga en eventos: valida tarjeta, saldo y presupuesto (alerta si te pasas) + boleta |
-| `transacciones.html` | Historial con filtro, buscador y resumen Pagos/Cargas |
-| `tarjeta.html` | Estado Activa/Bloqueada (bloqueada impide pagar) |
-| `base.html` | Plantilla de partida, no navegable |
+| `index` | Landing: hero, beneficios, navbar PayPal [Iniciar sesión][Crear cuenta], CTA [Ver cuenta demo] |
+| `login` | Entrada con email + clave (ojo mostrar/ocultar) y validación |
+| `register` | Crea cuenta: nombre, email, clave, presupuesto opcional (`Ej: 100000`) |
+| `dashboard` | La cuenta: saldo, presupuesto, tarjeta holográfica, últimas 3 + [Ver todo][Restablecer demo] |
+| `cargar` | Suma fondos (mín $1.000) con confirmación + boleta folio/imprimir/txt |
+| `pagar` | Paga en eventos: valida tarjeta, saldo y presupuesto (alerta si te pasas) + boleta |
+| `transacciones` | Historial con filtro, buscador y resumen Pagos/Cargas |
+| `tarjeta` | Estado Activa/Bloqueada (bloqueada impide pagar) |
+| `base` | Plantilla de partida, no navegable |
 
 ## 4. Archivos de soporte (qué hace cada uno)
 | Archivo | Propósito |
@@ -39,16 +39,11 @@ Navbar único (logo + botones derecha, en móvil centrados), cards oscuras con b
 ## 6. Cumplimiento del caso (dónde ver cada exigencia)
 | Exigencia | Dónde probarlo |
 |---|---|
-| Registro + ingreso seguro | `register.html` / `login.html` (validan y ojo 👁) |
-| Cuenta, tarjeta Activa/Bloqueada | `dashboard.html` + `tarjeta.html` (bloqueo impide pagar) |
-| Carga, saldo, presupuesto | `cargar.html` (mín $1.000, boleta con folio) |
-| Pagos con validaciones | `pagar.html` (tarjeta + saldo + presupuesto + confirm) |
-| Historial actualizado | `transacciones.html` (filtro + buscador + resumen) |
+| Registro + ingreso seguro | `register` / `login` (validan y ojo 👁) |
+| Cuenta, tarjeta Activa/Bloqueada | `dashboard` + `tarjeta` (bloqueo impide pagar) |
+| Carga, saldo, presupuesto | `cargar` (mín $1.000, boleta con folio) |
+| Pagos con validaciones | `pagar` (tarjeta + saldo + presupuesto + confirm) |
+| Historial actualizado | `transacciones` (filtro + buscador + resumen) |
 | Integración con eventos | Base lista (eventos + API en Fase 5) |
 | Seguridad | Validaciones + boletas + hash/JWT en Django |
 | Interfaz móvil + web | Responsive 9/9, probar en celular |
-| Bodega/Transporte/GPS | ❌ fuera de alcance |
-
-## 7. Checklist
-- [x] Flujo, mockups, navegación sin rotos, coherencia 9/9, fondos/efectos
-- [ ] Screenshots + diagrama en Draw.io (tuyos)

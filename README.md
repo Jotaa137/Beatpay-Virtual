@@ -1,14 +1,6 @@
 # BeatPay Virtual — Music Pro S.A. / Music Pro Tour 2026
 Plataforma de pago digital: cuenta + tarjeta virtual Visa para conciertos y eventos.
 
-## Estado por fase
-| Fase | Estado |
-|---|---|
-| 1 Diseño e interfaz | ✅ cerrada (ver `docs/FASE1-diseno.md`) |
-| 2 Modelo de datos | ✅ diseñada, falta dibujar ER en Draw.io (`docs/FASE2-modelo-datos.md`) |
-| 3 Django funcional | 🟡 rutas + JSON mock + DTL listos; faltan modelos, login real y admin |
-| 5 API REST + JWT | ⏳ DRF instalado, sin implementar |
-
 ## Qué hace cada archivo/carpeta
 ```text
 manage.py              control remoto: runserver, migrate
@@ -19,7 +11,7 @@ venv/                 ambiente aislado (NO se comparte ni se sube)
 config/               ajustes Django: settings.py, urls.py principal
 pagos/                app BeatPay: views.py, urls.py, models.py (vacío), data/demo.json
 templates/            8 páginas HTML (index, login, register, dashboard,
-                      cargar, pagar, transacciones, tarjeta) + base.html
+                      cargar, pagar, transacciones, tarjeta) + base
 static/css/           style.css (tema gamer RGB + modo claro)
 static/js/            app.js (núcleo) · auth.js (login/registro) ·
                       pagos.js (cuenta/carga/pago/historial) ·
@@ -42,12 +34,12 @@ python manage.py runserver
 ```
 
 ## Demo en 2 minutos (para la revisión)
-1. `/register.html` → regístrate (presupuesto vacío = $100.000).
-2. `dashboard.html` → ve saldo $80.000 y tarjeta Activa.
-3. `cargar.html` → carga $50.000, confirma, descarga la boleta txt.
-4. `pagar.html` → paga $120.000 y mira el aviso "Te pasaste del presupuesto".
-5. `transacciones.html` → filtra, busca y revisa el resumen.
-6. `tarjeta.html` → bloquea, intenta pagar (error), reactiva.
+1. `/register` → regístrate (presupuesto vacío = $100.000).
+2. `dashboard` → ve saldo $80.000 y tarjeta Activa.
+3. `cargar` → carga $50.000, confirma, descarga la boleta txt.
+4. `pagar` → paga $120.000 y mira el aviso "Te pasaste del presupuesto".
+5. `transacciones` → filtra, busca y revisa el resumen.
+6. `tarjeta` → bloquea, intenta pagar (error), reactiva.
 7. Cambia a modo claro ☀️ y repite 3-4.
 
 ## Documentos

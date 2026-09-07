@@ -145,10 +145,3 @@ class Transaccion(models.Model):
     fecha = models.DateTimeField(auto_now_add=True)
     class Meta: ordering = ['-fecha']
 ```
-
-## 6. Checklist Fase 2
-- [x] ER con 5 entidades y cardinalidades
-- [x] Tablas, tipos y reglas (mapeadas a validaciones actuales)
-- [x] Equivalencia localStorage → modelo
-- [x] `models.py` de referencia listo
-- [ ] Dibujar el ER en draw.io (crow foot en las FK)

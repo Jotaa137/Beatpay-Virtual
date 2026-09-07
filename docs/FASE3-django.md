@@ -7,14 +7,14 @@ manage.py            control remoto (runserver, migrate)
 config/settings.py   apps (pagos, rest_framework), templates/, static/, es-cl, America/Santiago
 config/urls.py       /admin/ + delega a pagos/
 pagos/views.py       8 vistas (leen demo.json y pasan contexto)
-pagos/urls.py        9 rutas (las .html de Fase 1, sin tocar links)
+pagos/urls.py        9 rutas (las  de Fase 1, sin tocar links)
 pagos/data/demo.json cuenta demo + 4 eventos + 3 transacciones con folio
 pagos/models.py      vacío (llega con la DB)
 ```
 
 ## 2. Rutas (todas 200, verificado con pruebas automatizadas)
-`/` `index.html` `register.html` `login.html` `dashboard.html` `cargar.html`
-`pagar.html` `transacciones.html` `tarjeta.html` (+ `admin/`)
+`/` `index` `register` `login` `dashboard` `cargar`
+`pagar` `transacciones` `tarjeta` (+ `admin/`)
 
 ## 3. Datos mock → vistas → DTL
 - `demo.json`: cuenta (demo@beatpay.cl, $80.000, pto $100.000, Activa), eventos y transacciones.
@@ -46,15 +46,4 @@ git remote add origin https://github.com/TU-USUARIO/beatpay-virtual.git
 git branch -M main
 git push -u origin main
 ```
-Ojo: `venv/` pesa miles de archivos — ideal es un `.gitignore` con `venv/` y `db.sqlite3` antes del `add` (dime y lo creo).
-
-## 5. Checklist Fase 3
-- [x] Estructura inicial Django
-- [x] urls.py coherente con la navegación
-- [x] views.py (8 vistas)
-- [x] Datos mock JSON + contexto
-- [x] DTL: for, if/else, empty, filtro add
-- [x] Interfaces Fase 1 integradas sin romperlas
-- [ ] models.py + migrate (DB real, siguiente paso)
-- [ ] Login real + logout + panel admin
-- [ ] Repositorio GitHub público (con tu cuenta)
+Ojo: `venv/` pesa miles de archivos — ideal es un `.gitignore` con `venv/` y `db.sqlite3` antes del `add`.

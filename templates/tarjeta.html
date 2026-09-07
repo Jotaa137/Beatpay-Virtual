@@ -6,13 +6,13 @@
 <script>try{document.documentElement.setAttribute('data-theme',localStorage.getItem('beatpay_theme')||'dark')}catch(e){}</script>
 <link rel="stylesheet" href="../static/css/style.css?v=3"></head>
 <body class="bg-[#0f0f1a] text-white min-h-screen">
-<nav class="navbar navbar-dark bg-black bg-opacity-50 border-bottom border-light border-opacity-10"><div class="container-fluid px-4" style="display:flex;align-items:center;gap:10px"><a class="navbar-brand logo" href="index.html">BEATPAY <span>VIRTUAL</span></a><div class="d-flex gap-2 align-items-center" style="margin-left:auto"><a class="btn btn-secondary btn-sm" href="index.html">Inicio</a></div></div></nav>
+<nav class="navbar navbar-dark bg-black bg-opacity-50 border-bottom border-light border-opacity-10"><div class="container-fluid px-4" style="display:flex;align-items:center;gap:10px"><a class="navbar-brand logo" href="index">BEATPAY <span>VIRTUAL</span></a><div class="d-flex gap-2 align-items-center" style="margin-left:auto"><a class="btn btn-secondary btn-sm" href="index">Inicio</a></div></div></nav>
 <main class="container py-5" style="max-width:520px"><div class="card bp-card"><div class="card-body p-4">
 <h2 class="h4">Tarjeta virtual</h2>
 <div class="tarjeta-visual shadow-lg"><div class="d-flex justify-content-between align-items-center"><span class="tv-marca">BEATPAY VIRTUAL {{ tipo }}</span><span class="badge text-bg-light">{{ tipo }}</span></div><div class="num">**** **** **** 1234</div><div class="d-flex align-items-center gap-2">{% if tarjeta == 'Activa' %}<span id="badge" class="badge text-bg-success">Activa</span>{% else %}<span id="badge" class="badge text-bg-danger">{{ tarjeta }}</span>{% endif %}</div></div>
 <p class="bp-muted">Vinculada a tu cuenta digital. Solo Activa permite pagar.</p>
 <button class="btn btn-beatpay w-100 mb-2" id="btnToggle" onclick="toggle()">Bloquear tarjeta</button>
-<a class="btn btn-secondary w-100" href="dashboard.html">Volver</a>
+<a class="btn btn-secondary w-100" href="dashboard">Volver</a>
 </div></div></main>
 <script src="../static/js/app.js?v=3"></script>
 <script src="../static/js/pagos.js?v=3"></script>

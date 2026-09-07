@@ -5,7 +5,7 @@ function doLogin(e) {
   const msg = document.getElementById('msg');
   if (!email || !email.includes('@')) { BeatPay.show(msg, 'Ingresa un email válido'); return false; }
   localStorage.setItem(BeatPay.K.user, email);
-  location.href = 'dashboard.html';
+  location.href = 'dashboard';
   return false;
 }
 function doReg(e) {
@@ -20,12 +20,12 @@ function doReg(e) {
   localStorage.setItem(BeatPay.K.user, email);
   localStorage.setItem(BeatPay.K.nombre, nombre);
   localStorage.setItem(BeatPay.K.pto, pto);
-  location.href = 'dashboard.html';
+  location.href = 'dashboard';
   return false;
 }
 function doLogout() {
   // Fase 1: no borramos saldo/tx para demo, solo sesión visual
-  location.href = 'index.html';
+  location.href = 'index';
 }
 function verPass(id, btn) {
   const i = document.getElementById(id);
