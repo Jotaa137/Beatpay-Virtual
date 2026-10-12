@@ -37,7 +37,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework',
     'pagos',
 ]
 
@@ -122,13 +121,3 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 
 LOGIN_URL = '/login'
 LOGIN_REDIRECT_URL = '/dashboard'
-
-
-# Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
-
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}

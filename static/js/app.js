@@ -1,7 +1,7 @@
 /* BeatPay Virtual - app.js unico (minimalista) */
 /* SECCION 1: datos y estado */
 const BeatPay = (() => {
-  const K = { saldo: 'beatpay_saldo', tarjeta: 'beatpay_tarjeta', tx: 'beatpay_tx', user: 'beatpay_user', nombre: 'beatpay_nombre', pto: 'beatpay_pto' };
+  const K = { saldo: 'beatpay_saldo', tarjeta: 'beatpay_tarjeta', tx: 'beatpay_tx', user: 'beatpay_user', pto: 'beatpay_pto' };
   const DEFAULT_TX = [
     { fecha: '10/12/2026', evento: 'Music Pro Tour', monto: 15000, tipo: 'PAGO', estado: 'Aprobado' },
     { fecha: '11/12/2026', evento: 'Rock Festival', monto: 8000, tipo: 'PAGO', estado: 'Aprobado' },
@@ -27,43 +27,11 @@ const BeatPay = (() => {
     el.classList.add('alert', ok ? 'alert-success' : 'alert-danger');
   }
   function hide(el) { if (el) el.classList.add('d-none'); }
-  function toast(msg, ok = true) {
-    let c = document.getElementById('bp-toast');
-    if (!c) { alert(msg); return; }
-    c.textContent = msg;
-    c.className = 'alert ' + (ok ? 'alert-success' : 'alert-danger');
-    c.classList.remove('d-none');
-    setTimeout(() => c.classList.add('d-none'), 3500);
-  }
-  return { K, init, fmt, getSaldo, setSaldo, getTarjeta, setTarjeta, getTx, addTx, show, hide, toast };
+  return { K, init, fmt, getSaldo, setSaldo, getTarjeta, setTarjeta, getTx, addTx, show, hide };
 })();
 function fmt(n) { return BeatPay.fmt(n); }
 
-/* SECCION 2: auth (login, registro) */
-function doLogin(e) {
-  e.preventDefault();
-  const email = document.getElementById('email').value.trim();
-  const msg = document.getElementById('msg');
-  if (!email || !email.includes('@')) { BeatPay.show(msg, 'Ingresa un email válido'); return false; }
-  localStorage.setItem(BeatPay.K.user, email);
-  location.href = 'dashboard';
-  return false;
-}
-function doReg(e) {
-  e.preventDefault();
-  const nombre = document.getElementById('nombre').value.trim();
-  const email = document.getElementById('email').value.trim();
-  const ptoRaw = document.getElementById('pto').value.trim();
-  const pto = ptoRaw === '' ? '100000' : ptoRaw;
-  if (nombre.length < 2) { BeatPay.toast('Ingresa tu nombre', false); return false; }
-  if (!email.includes('@')) { BeatPay.toast('Email inválido', false); return false; }
-  if (!(Number(pto) >= 0)) { BeatPay.toast('Presupuesto inválido', false); return false; }
-  localStorage.setItem(BeatPay.K.user, email);
-  localStorage.setItem(BeatPay.K.nombre, nombre);
-  localStorage.setItem(BeatPay.K.pto, pto);
-  location.href = 'dashboard';
-  return false;
-}
+/* SECCION 2: ayuda (mostrar/ocultar clave) */
 function verPass(id, btn) {
   const i = document.getElementById(id);
   if (!i) return false;
@@ -72,28 +40,7 @@ function verPass(id, btn) {
   if (btn) btn.textContent = show ? '🙈' : '👁';
   return false;
 }
-function requireAuth() {
-  if (!localStorage.getItem(BeatPay.K.user)) localStorage.setItem(BeatPay.K.user, 'demo@beatpay.cl');
-  const u = localStorage.getItem(BeatPay.K.user);
-  document.querySelectorAll('#user').forEach(el => el.textContent = u);
-}
-
-/* SECCION 3: pagos (dashboard, cargar, pagar) */
-function renderDashboard() {
-  requireAuth();
-  const saldo = BeatPay.getSaldo();
-  const sEl = document.getElementById('saldo'); if (sEl) sEl.textContent = BeatPay.fmt(saldo);
-  const pEl = document.getElementById('pto'); if (pEl) pEl.textContent = BeatPay.fmt(localStorage.getItem(BeatPay.K.pto) || 100000);
-  const est = BeatPay.getTarjeta();
-  const b = document.getElementById('estadoBadge');
-  if (b) { b.textContent = est; b.className = 'badge ' + (est === 'Activa' ? 'text-bg-success' : 'text-bg-danger'); }
-  const last = document.getElementById('last');
-  if (last) {
-    const tx = BeatPay.getTx().slice(-3).reverse();
-    last.innerHTML = '<table class="table table-striped mb-0"><thead><tr><th>Fecha</th><th>Evento</th><th>Monto</th><th>Estado</th></tr></thead><tbody>' +
-      tx.map(t => `<tr><td>${t.fecha}</td><td>${t.evento}</td><td>$${Number(t.monto).toLocaleString('es-CL')}</td><td><span class="badge text-bg-success">${t.estado}</span></td></tr>`).join('') + '</tbody></table>';
-  }
-}
+/* SECCION 3: pagos (cargar, pagar) */
 function cargar(e) {
   e.preventDefault();
   const m = Number(document.getElementById('monto').value);
@@ -160,15 +107,6 @@ function toggle() {
   BeatPay.setTarjeta(BeatPay.getTarjeta() === 'Activa' ? 'Bloqueada' : 'Activa');
   refresh();
 }
-function restablecerDemo() {
-  if (!confirm('¿Restablecer demo? Vuelve a $80.000.')) return false;
-  localStorage.setItem(BeatPay.K.tx, '[]');
-  BeatPay.setSaldo(80000);
-  BeatPay.setTarjeta('Activa');
-  localStorage.setItem(BeatPay.K.pto, '100000');
-  location.reload();
-  return false;
-}
 let ultimaBoleta = null;
 function mostrarBoleta(d) {
   ultimaBoleta = { folio: 'BP-' + String(Date.now()).slice(-6), fecha: new Date().toLocaleString('es-CL'), usuario: localStorage.getItem(BeatPay.K.user) || 'demo@beatpay.cl', tipo: d.tipo, evento: d.evento, monto: d.monto, antes: d.antes, nuevo: d.nuevo };
@@ -204,5 +142,5 @@ document.addEventListener('DOMContentLoaded', () => {
   BeatPay.init();
   initPagos();
   // Dashboard, tarjeta e historial los pinta el servidor (por usuario).
-  // renderDashboard/refresh/render solo se usan al filtrar o al operar.
+  // refresh/render solo se usan al filtrar o al operar la tarjeta.
 });

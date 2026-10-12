@@ -1,29 +1,7 @@
-# =====================================================
-# BeatPay Virtual - dependencias del proyecto
-# Music Pro S.A. / Music Pro Tour 2026
-#
-# Instalar todo con:
-#   pip install -r requirements.txt
-#
-# Generado con: pip freeze (versiones fijadas para que
-# funcione igual en cualquier PC)
-# =====================================================
-
-# --- Backend web (vistas, rutas, admin, login, base de datos) ---
+# BeatPay Virtual - dependencias (instalar con: pip install -r requirements.txt)
 Django==6.1.1
 
-# --- API REST con JSON (Fase 5) ---
-# Incluye: djangorestframework + JWT para que otros sistemas
-# (eventos, comercios) se conecten con BeatPay
-djangorestframework==3.18.0
-djangorestframework-simplejwt==5.5.1
-
-# --- Dependencias automaticas (las instalan las de arriba) ---
-# asgiref   : servidor asincrono que usa Django por dentro
-# sqlparse   : Django lo usa para hablar con la base de datos
-# PyJWT      : genera y valida los tokens de la API
-# tzdata      : zonas horarias (America/Santiago)
+# Dependencias automaticas de Django
 asgiref==3.12.1
 sqlparse==0.6.0
-PyJWT==2.13.0
 tzdata==2026.3
