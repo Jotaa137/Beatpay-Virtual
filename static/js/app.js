@@ -39,5 +39,3 @@ const BeatPay = (() => {
 })();
 document.addEventListener('DOMContentLoaded', () => BeatPay.init());
 function fmt(n){ return BeatPay.fmt(n); }
-// Auto-carga efectos gamer RGB en todas las páginas sin editar HTML
-(() => { try { const s = document.createElement('script'); s.src = '../static/js/efectos.js?v=3'; document.body.appendChild(s); } catch {} })();
