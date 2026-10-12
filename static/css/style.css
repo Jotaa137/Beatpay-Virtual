@@ -1,154 +1,38 @@
-/* BeatPay Virtual - GAMER RGB EDITION - compatible Bootstrap 5.3 + Tailwind */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@500;600;700&display=swap');
-:root{
-  --bp-bg:#05050f; --bp-card:#101028; --bp-accent:#7c3aed;
-  --neon-pink:#ff00e5; --neon-cyan:#00fff2; --neon-lime:#a3ff00; --neon-purple:#7c3aed; --neon-yellow:#ffe600;
-  --bp-green:#00ff9d; --bp-red:#ff2d55; --bp-muted:#9aa0c3;
-}
-body{background:var(--bp-bg) !important;color:#fff;min-height:100vh;font-family:'Rajdhani',system-ui,sans-serif;overflow-x:hidden;position:relative}
-/* Fondo aurora RGB animado */
-body::before{content:'';position:fixed;inset:0;z-index:-2;
-  background:
-    radial-gradient(600px 400px at 10% 10%, #ff00e533, transparent 60%),
-    radial-gradient(700px 500px at 90% 15%, #00fff233, transparent 60%),
-    radial-gradient(800px 600px at 50% 100%, #7c3aed44, transparent 60%),
-    radial-gradient(500px 400px at 85% 85%, #a3ff0022, transparent 60%),
-    #05050f;
-  animation:aurora 12s ease-in-out infinite alternate}
-@keyframes aurora{0%{filter:hue-rotate(0deg)}100%{filter:hue-rotate(60deg)}}
-/* Rejilla gamer sutil */
-body::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.12;
-  background-image:linear-gradient(#00fff211 1px,transparent 1px),linear-gradient(90deg,#00fff211 1px,transparent 1px);
-  background-size:40px 40px}
-/* Canvas partículas */
-#rgb-canvas{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.5}
-.logo{font-family:'Orbitron',sans-serif;font-weight:800;letter-spacing:2px}
-.logo span{background:linear-gradient(90deg,var(--neon-pink),var(--neon-cyan),var(--neon-lime),var(--neon-pink));background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:rgb-slide 4s linear infinite;filter:drop-shadow(0 0 8px #ff00e588)}
-@keyframes rgb-slide{to{background-position:300% 0}}
-.navbar{backdrop-filter:blur(12px);border-bottom:2px solid transparent !important;border-image:linear-gradient(90deg,var(--neon-pink),var(--neon-cyan),var(--neon-lime)) 1;box-shadow:0 0 20px #7c3aed55}
-/* Móvil: logo arriba y botones centrados en fila propia (no flotando a la derecha) */
-@media(max-width:576px){
-  .navbar .container-fluid{flex-wrap:wrap !important}
-  .navbar .navbar-brand{width:100%;text-align:center;margin-right:0}
-  .navbar .container-fluid > div:last-child{margin-left:0 !important;width:100%;justify-content:center;margin-top:.6rem}
-}
-/* Cards con borde RGB animado */
-.bp-card{background:var(--bp-card) !important;border:0 !important;border-radius:18px !important;color:#fff;position:relative;backdrop-filter:blur(10px);box-shadow:0 0 0 1px #ffffff15,0 10px 40px #000}
-/* Anillo RGB solo en el borde (máscara): no inunda el interior */
-.bp-card::before{content:'';position:absolute;inset:0;border-radius:18px;padding:2px;background:conic-gradient(from var(--a,0deg),#ff00e5,#00fff2,#a3ff00,#ffe600,#7c3aed,#ff00e5);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask-composite:exclude;animation:spin-border 5s linear infinite;opacity:.9;pointer-events:none}
-@property --a{syntax:'<angle>';initial-value:0deg;inherits:false}
-@keyframes spin-border{to{--a:360deg}}
-.bp-card:hover{transform:translateY(-2px);transition:.2s;box-shadow:0 0 25px #00fff244,0 10px 40px #000}
-.bp-muted{color:var(--bp-muted) !important}
-/* Textos dentro de cuadros: contraste alto sobre fondo oscuro sólido */
-.bp-card .card-title,.bp-card h2,.bp-card h3,.bp-card h5{color:#ffffff !important;font-weight:700;text-shadow:0 0 12px #7c3aed66}
-.bp-card .bp-muted,.bp-card .card-text{color:#d6dbf5 !important}
-.bp-card p:not(.bp-muted){color:#f2f4ff}
-.bp-saldo,.saldo{font-family:'Orbitron',sans-serif;font-size:2.4rem;font-weight:800;color:#fff;text-shadow:0 0 10px var(--neon-cyan),0 0 30px var(--neon-purple)}
-.hero h1{font-family:'Orbitron',sans-serif;background:linear-gradient(90deg,#fff,#00fff2,#ff00e5,#a3ff00,#fff);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:rgb-slide 5s linear infinite;filter:drop-shadow(0 0 15px #7c3aed88)}
-/* Botones neón */
-.btn-beatpay{background:linear-gradient(90deg,#7c3aed,#ff00e5) !important;border:0 !important;color:#fff !important;font-weight:700;box-shadow:0 0 15px #ff00e588,0 0 30px #7c3aed55;transition:.2s}
-.btn-beatpay:hover{transform:scale(1.03);box-shadow:0 0 25px #ff00e5cc,0 0 50px #7c3aed88;filter:brightness(1.15)}
-.btn-success{background:linear-gradient(90deg,#00ff9d,#00c3ff) !important;border:0 !important;color:#001 !important;font-weight:700;box-shadow:0 0 15px #00ff9d88}
-.btn-secondary{background:#1a1a30 !important;border:1px solid #00fff233 !important}
-.btn-outline-light{border-color:var(--neon-cyan) !important;color:var(--neon-cyan) !important;box-shadow:0 0 10px #00fff233 inset}
-.btn-outline-light:hover{background:#00fff222 !important}
-/* Tarjeta holográfica RGB */
-.tarjeta-visual{background:linear-gradient(135deg,#ff00e5,#7c3aed 30%,#00fff2 60%,#a3ff00 90%);background-size:300% 300%;animation:holo 6s ease infinite;border-radius:18px;padding:1.4rem;margin:1rem 0;color:#fff;position:relative;overflow:hidden;box-shadow:0 0 25px #ff00e555,0 0 60px #00fff233;border:1px solid #ffffff44}
-@keyframes holo{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
-.tarjeta-visual::after{content:'';position:absolute;top:-50%;left:-30%;width:60%;height:200%;background:linear-gradient(100deg,transparent,#ffffff66,transparent);transform:rotate(15deg);animation:shine 3s infinite}
-@keyframes shine{0%{left:-60%}100%{left:130%}}
-.tarjeta-visual .num{font-family:'Orbitron',sans-serif;letter-spacing:3px;font-size:1.25rem;text-shadow:0 2px 8px #000}
-/* Marca pequeña uniforme arriba de la tarjeta */
-.tarjeta-visual .tv-marca{font-size:.78rem;font-weight:700;letter-spacing:3px;opacity:.95}
-/* Nombre del titular: pastilla oscura, legible en ambos modos y cualquier fondo RGB */
-.tarjeta-visual span.bp-muted{background:#0a0a18dd;color:#fff !important;font-weight:700;padding:.2rem .7rem;border-radius:999px}
-/* VISA proporcionado: pastilla clara, texto azul marino */
-.tarjeta-visual .text-bg-light{font-size:.8rem !important;font-weight:800;letter-spacing:2px;padding:.35rem .7rem !important;background:#fff !important;color:#1a1a6c !important;box-shadow:0 2px 8px #00000055}
-/* Badge de estado sobre la tarjeta holográfica: pastilla oscura legible (VISA queda claro) */
-.tarjeta-visual #estadoBadge,.tarjeta-visual #badge{background:#0a0a18f2 !important;border:1px solid currentColor;box-shadow:0 0 12px #00000088}
-.tarjeta-visual .text-bg-success{color:#00ff9d !important;box-shadow:0 0 12px #00ff9d77}
-.tarjeta-visual .text-bg-danger{color:#ff5d7a !important;box-shadow:0 0 12px #ff2d5577}
-/* Badges neón */
-.badge{font-family:'Rajdhani',sans-serif;letter-spacing:1px}
-.text-bg-success{background:linear-gradient(90deg,#00ff9d,#00c3ff) !important;color:#001 !important;box-shadow:0 0 10px #00ff9d88}
-.text-bg-danger{background:linear-gradient(90deg,#ff2d55,#ff00e5) !important;box-shadow:0 0 10px #ff2d5588}
-.text-bg-primary{background:linear-gradient(90deg,#7c3aed,#00fff2) !important;box-shadow:0 0 10px #7c3aed88}
-/* Tablas */
-.table-dark{--bs-table-bg:transparent}
-.table-dark tbody tr:hover{--bs-table-hover-bg:#00fff211}
-/* Inputs */
-.form-control.bp-input,.bp-input{background:#08081a !important;border:1px solid #00fff233 !important;color:#fff !important;border-radius:12px !important;caret-color:var(--neon-cyan)}
-.form-control.bp-input::placeholder,.bp-input::placeholder{color:#9aa0c3 !important;opacity:1}
-.form-control.bp-input:focus,.form-select.bp-input:focus{border-color:var(--neon-pink) !important;box-shadow:0 0 0 .25rem #ff00e533,0 0 15px #ff00e533 !important;color:#fff !important}
-.form-select.bp-input{background-color:#08081a !important;color:#fff !important;border-color:#00fff233 !important}
-.form-select.bp-input option,select option{background:#14142b;color:#fff}
-label.form-label{color:var(--neon-cyan);font-weight:600;letter-spacing:.5px}
-.alert{border-radius:12px !important}
-.hero{padding:3rem 1rem}
-footer{color:var(--bp-muted);font-size:.85rem}
-/* Scrollbar simple */
-html{scrollbar-width:thin;scrollbar-color:#3a3f66 #0a0a18}
-::-webkit-scrollbar{width:10px}::-webkit-scrollbar-track{background:#0a0a18}::-webkit-scrollbar-thumb{background:#3a3f66;border-radius:10px}::-webkit-scrollbar-thumb:hover{background:#7c3aed}
-.bp-grid{display:grid;gap:1rem;grid-template-columns:1fr}
-@media(min-width:768px){.bp-grid-2{grid-template-columns:1fr 1fr}.bp-grid-3{grid-template-columns:1fr 1fr 1fr}}
-/* ===== FONDO 3D ===== */
-#fondo-3d{position:fixed;inset:0;z-index:-3;perspective:600px;overflow:hidden;pointer-events:none}
-#fondo-3d canvas.fondo3d{position:absolute;inset:0;width:100%;height:100%}
-/* Ecualizador 3D concierto: fijo abajo, detrás del contenido */
-#ecualizador-3d{position:fixed;left:0;right:0;bottom:0;width:100%;height:38vh;z-index:-2;pointer-events:none;opacity:.9;mask-image:linear-gradient(to top,black 75%,transparent 100%)}
-/* Notas musicales flotantes */
-#notas-musicales{position:fixed;inset:0;z-index:-2;pointer-events:none;opacity:.8}
-.piso-3d{position:absolute;left:-50%;right:-50%;bottom:-10%;height:45%;background-image:linear-gradient(#ff00e544 2px,transparent 2px),linear-gradient(90deg,#00fff244 2px,transparent 2px);background-size:60px 60px;transform:rotateX(65deg);animation:piso-move 2.5s linear infinite;mask-image:linear-gradient(to top,black 60%,transparent 95%);filter:drop-shadow(0 0 12px #ff00e588)}
-@keyframes piso-move{from{background-position:0 0,0 0}to{background-position:0 60px,0 0}}
-.orbe-3d{position:absolute;border-radius:50%;filter:blur(2px);opacity:.8;transform-style:preserve-3d;animation:flota-3d 7s ease-in-out infinite}
-.orbe-1{width:120px;height:120px;left:8%;top:15%;background:radial-gradient(circle at 30% 30%,#ff00e5,#7c3aed88 60%,transparent 70%);box-shadow:0 0 40px #ff00e5aa;animation-delay:0s}
-.orbe-2{width:90px;height:90px;right:10%;top:25%;background:radial-gradient(circle at 30% 30%,#00fff2,#0044ff88 60%,transparent 70%);box-shadow:0 0 40px #00fff2aa;animation-delay:2s}
-.orbe-3{width:70px;height:70px;left:70%;bottom:30%;background:radial-gradient(circle at 30% 30%,#a3ff00,#00aa5588 60%,transparent 70%);box-shadow:0 0 30px #a3ff00aa;animation-delay:4s}
-@keyframes flota-3d{0%,100%{transform:translateZ(0) translateY(0) scale(1)}50%{transform:translateZ(80px) translateY(-25px) scale(1.1)}}
-/* ===== GATO ESQUINA ===== */
-#gato-beatpay{position:fixed;left:14px;bottom:14px;z-index:9999;cursor:pointer;user-select:none;text-align:center;transition:transform .2s}
-#gato-beatpay:hover{transform:scale(1.12) rotate(-4deg)}
-#gato-beatpay .gato-cuerpo{font-size:44px;filter:drop-shadow(0 0 10px #ff00e5aa) drop-shadow(0 4px 6px #000);animation:gato-respira 2.5s ease-in-out infinite;display:block;line-height:1}
-@keyframes gato-respira{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
-#gato-bocadillo{position:absolute;left:50%;bottom:calc(100% + 10px);background:#fff;color:#111;font-weight:700;padding:.35rem .7rem;border-radius:14px;font-size:.9rem;white-space:nowrap;box-shadow:0 4px 15px #00000066;opacity:0;transform:translateX(-50%) scale(.5);transform-origin:bottom center;transition:.25s}
-#gato-bocadillo.ver{opacity:1;transform:translateX(-50%) scale(1)}
-#gato-bocadillo::after{content:'';position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-top-color:#fff;border-bottom:0}
-/* ===== BOTON TEMA ===== */
-#btn-tema{position:fixed;right:14px;bottom:14px;z-index:9999;cursor:pointer;width:54px;height:54px;border-radius:50%;font-size:25px;line-height:1;background:#14142b;border:2px solid var(--neon-cyan);color:#fff;box-shadow:0 0 15px #00fff2aa,0 0 35px #ff00e555;display:flex;align-items:center;justify-content:center;transition:.2s}
-#btn-tema:hover{transform:scale(1.12);box-shadow:0 0 22px #00fff2ee,0 0 45px #ff00e577}
-[data-theme="light"] #btn-tema{background:#ffffff;border-color:var(--neon-purple);box-shadow:0 0 15px #7c3aed88}
-/* ===== MODO CLARO ===== */
-[data-theme="light"] body,html[data-theme="light"] body{background:#eef1ff !important;color:#14142b !important}
-[data-theme="light"] body::before{opacity:.35}
-[data-theme="light"] .bp-card{background:#ffffff !important;color:#14142b !important;box-shadow:0 10px 30px #7c3aed22}
-[data-theme="light"] .bp-muted{color:#55577a !important}
-[data-theme="light"] .bp-card .card-title,[data-theme="light"] .bp-card h2,[data-theme="light"] .bp-card h3,[data-theme="light"] .bp-card h5{color:#14142b !important;text-shadow:none}
-[data-theme="light"] .bp-card .bp-muted,[data-theme="light"] .bp-card .card-text{color:#55577a !important}
-[data-theme="light"] .bp-card p:not(.bp-muted){color:#23233f}
-[data-theme="light"] .navbar{background:#ffffffdd !important}
-[data-theme="light"] .navbar .nav-link{color:#14142b !important}
-[data-theme="light"] .logo{color:#14142b !important}
-[data-theme="light"] .hero h1{background:linear-gradient(90deg,#6d28d9,#ff00c8,#0055ff,#009688,#6d28d9);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;filter:none}
-[data-theme="light"] .btn-outline-light{border-color:#7c3aed !important;color:#6d28d9 !important;box-shadow:none}
-[data-theme="light"] .form-control.bp-input,[data-theme="light"] .bp-input{background:#fff !important;color:#14142b !important;border-color:#7c3aed44 !important}
-[data-theme="light"] .form-control.bp-input::placeholder,[data-theme="light"] .bp-input::placeholder{color:#6b6e94 !important}
-[data-theme="light"] .form-select.bp-input{background-color:#fff !important;color:#14142b !important}
-[data-theme="light"] label.form-label{color:#7c3aed}
-[data-theme="light"] .saldo,[data-theme="light"] .bp-saldo{color:#14142b;text-shadow:none}
-[data-theme="light"] .table-dark{--bs-table-bg:#fff;--bs-table-color:#14142b;--bs-table-border-color:#e2e3f5;--bs-table-striped-bg:#f1f0ff;--bs-table-striped-color:#14142b;--bs-table-hover-bg:#e9e7ff;--bs-table-hover-color:#14142b;--bs-table-active-bg:#e2defc;--bs-table-active-color:#14142b}
-[data-theme="light"] footer{color:#55577a}
-[data-theme="light"] .piso-3d{display:none}
-[data-theme="light"] body::after{opacity:.05}
-[data-theme="light"] #rgb-canvas{opacity:.25}
-[data-theme="light"] #ecualizador-3d{opacity:.85;filter:saturate(1.3)}
-[data-theme="light"] #notas-musicales{opacity:.7}
-/* Impresión de boleta: solo la boleta, sin fondos ni botones */
-@media print{
-  body{background:#fff !important}
-  body *{visibility:hidden}
-  #boleta,#boleta *{visibility:visible}
-  #boleta{position:absolute;left:0;top:0;width:100%;background:#fff !important;color:#000 !important;box-shadow:none}
-  #boleta .btn{display:none}
-  #fondo-3d,#ecualizador-3d,#rgb-canvas,#gato-beatpay,#btn-tema{display:none !important}
+/* BeatPay Virtual - estilo minimalista (solo Bootstrap 5.3) */
+/* 1. Base */
+body { background: #f4f6f9; color: #212529; min-height: 100vh; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { min-height: 70vh; }
+footer { color: #6c757d; font-size: .85rem; }
+
+/* 2. Navbar + logo */
+.navbar { background: #fff !important; border-bottom: 1px solid #dee2e6; }
+.navbar .nav-link, .navbar-brand { color: #212529 !important; }
+.logo { font-weight: 800; letter-spacing: 1px; }
+.logo span { color: #0d6efd; }
+
+/* 3. Cards */
+.bp-card { background: #fff !important; border: 1px solid #dee2e6 !important; border-radius: 12px !important; color: #212529; }
+.bp-muted { color: #6c757d !important; }
+.hero { padding: 2.5rem 1rem; }
+.hero h1 { font-weight: 800; }
+
+/* 4. Saldo + tarjeta */
+.saldo, .bp-saldo { font-size: 2rem; font-weight: 800; }
+.tarjeta-visual { background: #1a237e; border-radius: 12px; padding: 1.2rem; margin: 1rem 0; color: #fff; }
+.tarjeta-visual .num { letter-spacing: 2px; font-size: 1.15rem; }
+.tarjeta-visual .tv-marca { font-size: .75rem; font-weight: 700; letter-spacing: 2px; opacity: .9; }
+
+/* 5. Botones e inputs (compatibles con clases viejas) */
+.btn-beatpay { background: #0d6efd !important; border: 0 !important; color: #fff !important; font-weight: 600; }
+.btn-beatpay:hover { background: #0b5ed7 !important; }
+.bp-input { border-radius: 8px !important; }
+label.form-label { font-weight: 600; }
+
+/* 6. Boleta (impresion) */
+@media print {
+  body { background: #fff !important; }
+  body * { visibility: hidden; }
+  #boleta, #boleta * { visibility: visible; }
+  #boleta { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; }
+  #boleta .btn { display: none; }
 }
