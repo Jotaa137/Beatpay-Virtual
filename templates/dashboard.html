@@ -8,9 +8,12 @@
 <a class="navbar-brand logo" href="index">BEATPAY <span>VIRTUAL</span></a>
 <div class="d-flex gap-2 align-items-center flex-wrap justify-content-end" style="margin-left:auto">
 <a class="btn btn-secondary btn-sm" href="index">Inicio</a>
+{% if request.user.is_staff %}<a class="btn btn-beatpay btn-sm" href="panel">Panel</a>{% endif %}
+<a class="btn btn-outline-secondary btn-sm" href="logout">Salir</a>
 </div>
 </div></nav>
 <main class="container py-4">
+{% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags|default:'info' }}">{{ m }}</div>{% endfor %}{% endif %}
 <div class="row g-3">
 <div class="col-12 col-md-6"><div class="card bp-card h-100"><div class="card-body">
 <h5 class="card-title">Saldo disponible</h5><div class="saldo" id="saldo">${{ saldo }}</div>
@@ -19,15 +22,13 @@
 </div></div></div>
 <div class="col-12 col-md-6"><div class="card bp-card h-100"><div class="card-body">
 <h5 class="card-title">Tarjeta virtual Visa</h5>
-<div class="tarjeta-visual"><div class="d-flex justify-content-between align-items-center"><span class="tv-marca">BEATPAY VIRTUAL</span><span class="badge text-bg-light">VISA</span></div><div class="num">**** **** **** 1234</div><div class="d-flex align-items-center gap-2"><span id="estadoBadge" class="badge {% if tarjeta == 'Activa' %}text-bg-success{% else %}text-bg-danger{% endif %}">{{ tarjeta }}</span><span class="bp-muted">Juan Pérez</span></div></div>
+<div class="tarjeta-visual"><div class="d-flex justify-content-between align-items-center"><span class="tv-marca">BEATPAY VIRTUAL</span><span class="badge text-bg-light">VISA</span></div><div class="num">**** **** **** 1234</div><div class="d-flex align-items-center gap-2"><span id="estadoBadge" class="badge {% if tarjeta == 'Activa' %}text-bg-success{% else %}text-bg-danger{% endif %}">{{ tarjeta }}</span><span class="bp-muted">{{ usuario }}</span></div></div>
 <a class="btn btn-secondary w-100" href="tarjeta">Administrar tarjeta</a>
 </div></div></div>
 </div>
-<div class="card bp-card mt-3"><div class="card-body"><h5>Últimos movimientos</h5><div class="table-responsive" id="last"><table class="table table-striped mb-0"><thead><tr><th>Fecha</th><th>Evento</th><th>Monto</th><th>Estado</th></tr></thead><tbody>{% for u in ultimas %}<tr><td>{{ u.fecha }}</td><td>{{ u.evento }}</td><td>${{ u.monto }}</td><td><span class="badge text-bg-success">{{ u.estado }}</span></td></tr>{% empty %}<tr><td colspan="4">Sin movimientos</td></tr>{% endfor %}</tbody></table></div><div class="d-flex flex-wrap gap-2 mt-3"><a class="btn btn-secondary" href="transacciones">Ver todo</a><button class="btn btn-outline-danger" onclick="return restablecerDemo()">Restablecer demo</button></div></div></div>
-<div id="bp-toast" class="alert d-none"></div>
+<div class="card bp-card mt-3"><div class="card-body"><h5>Últimos movimientos</h5><div class="table-responsive" id="last"><table class="table table-striped mb-0"><thead><tr><th>Fecha</th><th>Evento</th><th>Monto</th><th>Estado</th></tr></thead><tbody>{% for u in ultimas %}<tr><td>{{ u.fecha }}</td><td>{{ u.evento }}</td><td>${{ u.monto }}</td><td><span class="badge text-bg-success">{{ u.estado }}</span></td></tr>{% empty %}<tr><td colspan="4">Sin movimientos</td></tr>{% endfor %}</tbody></table></div><div class="d-flex flex-wrap gap-2 mt-3"><a class="btn btn-secondary" href="transacciones">Ver todo</a></div></div></div>
 </main>
 <script>try{if(!localStorage.getItem('beatpay_saldo'))localStorage.setItem('beatpay_saldo','{{ saldo }}');if(!localStorage.getItem('beatpay_pto'))localStorage.setItem('beatpay_pto','{{ pto }}');if(!localStorage.getItem('beatpay_tarjeta'))localStorage.setItem('beatpay_tarjeta','{{ tarjeta }}');if(!localStorage.getItem('beatpay_tx'))localStorage.setItem('beatpay_tx','{{ tx_json|escapejs }}');}catch(e){}</script>
 <script src="{% static 'js/app.js' %}"></script>
-<script>document.addEventListener('DOMContentLoaded',()=>renderDashboard());</script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body></html>

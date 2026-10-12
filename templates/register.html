@@ -7,15 +7,15 @@
 <nav class="navbar"><div class="container-fluid px-4" style="display:flex;align-items:center;gap:10px"><a class="navbar-brand logo" href="index">BEATPAY <span>VIRTUAL</span></a><div class="d-flex gap-2 align-items-center" style="margin-left:auto"><a class="btn btn-secondary btn-sm" href="index">Inicio</a><a class="btn btn-beatpay btn-sm" href="login">Entrar</a></div></div></nav>
 <main class="container py-5" style="max-width:520px"><div class="card bp-card"><div class="card-body p-4">
 <h2 class="h4">Crear cuenta</h2><p class="bp-muted">Cuenta digital + tarjeta virtual automática</p>
-<form onsubmit="return doReg(event)">
-<label class="form-label">Nombre</label><input id="nombre" class="form-control bp-input mb-3" required placeholder="Juan Pérez">
-<label class="form-label">Email</label><input id="email" class="form-control bp-input mb-3" type="email" required>
-<label class="form-label">Contraseña (mín. {{ min_pass }} caracteres)</label><div class="input-group mb-3"><input id="pass" class="form-control bp-input" type="password" required minlength="6"><button class="btn btn-secondary" type="button" onclick="return verPass('pass',this)" title="Mostrar/ocultar">👁</button></div>
-<label class="form-label">Presupuesto para eventos</label><input id="pto" class="form-control bp-input mb-1" type="number" min="0" placeholder="Ej: {{ presupuesto_default }}">
+{% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags|default:'info' }}">{{ m }}</div>{% endfor %}{% endif %}
+<form method="post">{% csrf_token %}
+<label class="form-label">Nombre</label><input name="nombre" id="nombre" class="form-control bp-input mb-3" required placeholder="Juan Pérez">
+<label class="form-label">Email</label><input name="email" id="email" class="form-control bp-input mb-3" type="email" required>
+<label class="form-label">Contraseña (mín. {{ min_pass }} caracteres)</label><div class="input-group mb-3"><input name="pass" id="pass" class="form-control bp-input" type="password" required minlength="6"><button class="btn btn-secondary" type="button" onclick="return verPass('pass',this)" title="Mostrar/ocultar">👁</button></div>
+<label class="form-label">Presupuesto para eventos</label><input name="pto" id="pto" class="form-control bp-input mb-1" type="number" min="0" placeholder="Ej: {{ presupuesto_default }}">
 <p class="bp-muted mb-3" style="font-size:.8rem">Opcional. Si lo dejas vacío se usa $100.000 de ejemplo.</p>
 <button class="btn btn-beatpay w-100" type="submit">Registrarme</button>
 </form></div></div></main>
-<div id="bp-toast" class="alert d-none container mt-3" style="max-width:520px"></div>
 <script src="{% static 'js/app.js' %}"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body></html>

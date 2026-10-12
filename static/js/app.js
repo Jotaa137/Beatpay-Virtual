@@ -203,7 +203,6 @@ function initPagos() {
 document.addEventListener('DOMContentLoaded', () => {
   BeatPay.init();
   initPagos();
-  if (document.getElementById('saldo') && document.getElementById('last')) renderDashboard();
-  if (document.getElementById('badge')) refresh();
-  if (document.getElementById('tabla')) render();
+  // Dashboard, tarjeta e historial los pinta el servidor (por usuario).
+  // renderDashboard/refresh/render solo se usan al filtrar o al operar.
 });

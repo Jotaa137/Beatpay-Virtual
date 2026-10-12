@@ -1,0 +1,30 @@
+{% load static %}<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel - BeatPay</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/style.css' %}"></head>
+<body class="d-flex flex-column min-vh-100">
+<nav class="navbar"><div class="container-fluid px-4" style="display:flex;align-items:center;gap:10px"><a class="navbar-brand logo" href="index">BEATPAY <span>VIRTUAL</span></a><div class="d-flex gap-2 align-items-center" style="margin-left:auto"><a class="btn btn-secondary btn-sm" href="dashboard">Mi cuenta</a><a class="btn btn-outline-secondary btn-sm" href="logout">Salir</a></div></div></nav>
+<main class="container py-4">
+<h2 class="h4">Panel de administración</h2>
+<p class="bp-muted">Cuentas y roles. Solo staff.</p>
+{% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags|default:'info' }}">{{ m }}</div>{% endfor %}{% endif %}
+<div class="card bp-card"><div class="card-body">
+<div class="table-responsive"><table class="table table-striped table-hover mb-0">
+<thead><tr><th>Usuario</th><th>Nombre</th><th>Saldo</th><th>Ppto</th><th>Tarjeta</th><th>Staff</th><th>Acciones</th></tr></thead>
+<tbody>
+{% for u in usuarios %}<tr>
+<td>{{ u.username }}</td><td>{{ u.first_name|default:'—' }}</td>
+<td>${{ u.cuenta.saldo }}</td><td>${{ u.cuenta.presupuesto }}</td>
+<td><span class="badge {% if u.cuenta.tarjeta == 'Activa' %}text-bg-success{% else %}text-bg-danger{% endif %}">{{ u.cuenta.tarjeta }}</span></td>
+<td>{% if u.is_staff %}<span class="badge text-bg-primary">sí</span>{% else %}<span class="badge text-bg-secondary">no</span>{% endif %}</td>
+<td><div class="d-flex gap-1 flex-wrap">
+<form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="user_id" value="{{ u.id }}"><input type="hidden" name="action" value="toggle_tarjeta"><button class="btn btn-sm btn-outline-secondary" type="submit">Tarjeta</button></form>
+<form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="user_id" value="{{ u.id }}"><input type="hidden" name="action" value="toggle_staff"><button class="btn btn-sm btn-outline-primary" type="submit">Staff</button></form>
+</div></td>
+</tr>{% empty %}<tr><td colspan="7">Sin usuarios</td></tr>{% endfor %}
+</tbody></table></div>
+</div></div></main>
+<script src="{% static 'js/app.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body></html>
