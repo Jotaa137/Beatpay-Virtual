@@ -11,7 +11,7 @@ from django.db.models import Q
 from django.shortcuts import redirect, render
 
 from .forms import EmisionForm, LoginForm, RegistroForm
-from .models import Auditoria, Cuenta
+from .models import Auditoria, Cuenta, Tarjeta
 
 # Datos mock en JSON (eventos y transacciones de ejemplo).
 DEMO_PATH = Path(__file__).resolve().parent / 'data' / 'demo.json'
@@ -25,6 +25,10 @@ def _demo():
 def _cuenta(user):
     cuenta, _ = Cuenta.objects.get_or_create(user=user)
     return cuenta
+
+
+def _tarjeta(user):
+    return Tarjeta.objects.get_or_create(cuenta=_cuenta(user))[0]
 
 
 def _log(usuario, accion, detalle=''):
@@ -58,7 +62,8 @@ def register(request):
             d = form.cleaned_data
             pto = d['presupuesto'] if d['presupuesto'] is not None else 100000
             user = User.objects.create_user(username=d['username'], email=d['email'], password=d['password'], first_name=d['nombre'])
-            Cuenta.objects.create(user=user, presupuesto=pto)
+            cuenta = Cuenta.objects.create(user=user, presupuesto=pto)
+            Tarjeta.objects.create(cuenta=cuenta)
             _log(d['username'], 'registro', f'pto ${pto}')
             auth_login(request, user)
             return redirect('dashboard')
@@ -134,7 +139,7 @@ def dashboard(request):
                 messages.error(request, 'No puedes transferirte a ti mismo.')
             elif not destino.is_active:
                 messages.error(request, 'Ese usuario está bloqueado.')
-            elif cuenta.tarjeta != 'Activa':
+            elif _tarjeta(request.user).estado != 'Activa':
                 messages.error(request, 'Tu tarjeta no está activa.')
             elif monto < 1000:
                 messages.error(request, 'Monto mínimo $1.000.')
@@ -154,7 +159,7 @@ def dashboard(request):
         'usuario': request.user.first_name or request.user.username,
         'saldo': cuenta.saldo,
         'pto': cuenta.presupuesto,
-        'tarjeta': cuenta.tarjeta,
+        'tarjeta': _tarjeta(request.user).estado,
         'solicitud': cuenta.solicitud_cupo,
         'ultimas': ultimas,
         'tx_json': json.dumps(tx),
@@ -205,16 +210,16 @@ def transacciones(request):
 def tarjeta(request):
     if request.user.is_staff:
         return redirect('panel')
-    cuenta = _cuenta(request.user)
+    tobj = _tarjeta(request.user)
     if request.method == 'POST' and request.POST.get('action') == 'toggle':
-        cuenta.tarjeta = 'Bloqueada' if cuenta.tarjeta == 'Activa' else 'Activa'
-        cuenta.save()
-        _log(request.user.username, 'tarjeta', f'propia: {cuenta.tarjeta}')
-        messages.success(request, f'Tarjeta {cuenta.tarjeta.lower()}.')
+        tobj.estado = 'Bloqueada' if tobj.estado == 'Activa' else 'Activa'
+        tobj.save()
+        _log(request.user.username, 'tarjeta', f'propia: {tobj.estado}')
+        messages.success(request, f'Tarjeta {tobj.estado.lower()}.')
         return redirect('tarjeta')
     return render(request, 'tarjeta.html', {
-        'tarjeta': cuenta.tarjeta,
-        'tipo': 'Visa',
+        'tarjeta': tobj.estado,
+        'tipo': tobj.tipo,
     })
 
 
@@ -239,11 +244,11 @@ def panel(request):
         else:
             d = form.cleaned_data
             nuevo = User.objects.create_user(username=d['username'], email=d['email'], password=d['password'], first_name=d['nombre'])
-            Cuenta.objects.create(user=nuevo)
+            Tarjeta.objects.create(cuenta=Cuenta.objects.create(user=nuevo))
             _log(request.user.username, 'emitir', f'tarjeta para {d["username"]}')
             messages.success(request, f'Tarjeta emitida para {d["username"]}.')
     for u in User.objects.all():
-        _cuenta(u)
+        _tarjeta(u)
     clientes = list(User.objects.filter(is_staff=False).select_related('cuenta').order_by('username'))
     cuentas = [u.cuenta for u in clientes]
     tx = _demo()['transacciones']
@@ -253,9 +258,9 @@ def panel(request):
     if q:
         usuarios = [u for u in usuarios if q.lower() in u.username.lower() or q.lower() in (u.first_name or '').lower()]
     if filtro == 'activas':
-        usuarios = [u for u in usuarios if u.cuenta.tarjeta == 'Activa']
+        usuarios = [u for u in usuarios if u.cuenta.tarjeta.estado == 'Activa']
     elif filtro == 'bloqueadas':
-        usuarios = [u for u in usuarios if u.cuenta.tarjeta != 'Activa']
+        usuarios = [u for u in usuarios if u.cuenta.tarjeta.estado != 'Activa']
     todos = clientes
     return render(request, 'admin.html', {
         'usuarios': usuarios,
@@ -265,8 +270,8 @@ def panel(request):
         'n_bloqueados': sum(1 for u in todos if not u.is_active),
         'saldo_total': sum(c.saldo for c in cuentas),
         'saldo_promedio': round(sum(c.saldo for c in cuentas) / max(len(cuentas), 1)),
-        'tarjetas_activas': sum(1 for c in cuentas if c.tarjeta == 'Activa'),
-        'tarjetas_bloqueadas': sum(1 for c in cuentas if c.tarjeta != 'Activa'),
+        'tarjetas_activas': Tarjeta.objects.filter(estado='Activa').count(),
+        'tarjetas_bloqueadas': Tarjeta.objects.exclude(estado='Activa').count(),
         'total_pagos': sum(t['monto'] for t in tx if t['tipo'] == 'PAGO'),
         'total_cargas': sum(t['monto'] for t in tx if t['tipo'] != 'PAGO'),
     })
@@ -283,13 +288,14 @@ def usuario_detalle(request, user_id):
         messages.error(request, 'Usuario no encontrado.')
         return redirect('panel')
     tcuenta = _cuenta(target)
+    ttarjeta = _tarjeta(target)
     if request.method == 'POST':
         action = request.POST.get('action')
         if action == 'toggle_tarjeta':
-            tcuenta.tarjeta = 'Bloqueada' if tcuenta.tarjeta == 'Activa' else 'Activa'
-            tcuenta.save()
-            _log(request.user.username, 'tarjeta', f'{target.username}: {tcuenta.tarjeta}')
-            messages.success(request, f'Tarjeta de {target.username}: {tcuenta.tarjeta}.')
+            ttarjeta.estado = 'Bloqueada' if ttarjeta.estado == 'Activa' else 'Activa'
+            ttarjeta.save()
+            _log(request.user.username, 'tarjeta', f'{target.username}: {ttarjeta.estado}')
+            messages.success(request, f'Tarjeta de {target.username}: {ttarjeta.estado}.')
         elif action == 'toggle_activo':
             if target == request.user:
                 messages.error(request, 'No puedes bloquearte a ti mismo.')
@@ -327,5 +333,6 @@ def usuario_detalle(request, user_id):
     return render(request, 'usuario.html', {
         'target': target,
         'cuenta': tcuenta,
+        'tarjeta': ttarjeta,
         'historial': historial,
     })

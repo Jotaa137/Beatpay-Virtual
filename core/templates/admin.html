@@ -59,7 +59,7 @@
 <td><span class="avatar">{{ u.username|slice:':1'|upper }}</span><b>{{ u.username }}</b><br><span class="bp-muted">{{ u.first_name|default:'—' }}</span></td>
 <td class="num">${{ u.cuenta.saldo }}</td>
 <td class="num">${{ u.cuenta.presupuesto }}</td>
-<td><span class="badge {% if u.cuenta.tarjeta == 'Activa' %}text-bg-success{% else %}text-bg-danger{% endif %}">{{ u.cuenta.tarjeta }}</span></td>
+<td><span class="badge {% if u.cuenta.tarjeta.estado == 'Activa' %}text-bg-success{% else %}text-bg-danger{% endif %}">{{ u.cuenta.tarjeta.estado }}</span></td>
 <td>{% if u.is_active %}<span class="badge text-bg-success">sí</span>{% else %}<span class="badge text-bg-danger">no</span>{% endif %}</td>
 <td><a href="{% url 'usuario_detalle' u.id %}" class="btn btn-sm btn-outline-primary">Ver</a></td>
 </tr>{% empty %}<tr><td colspan="6" class="text-center bp-muted py-4">🔍 Sin usuarios con ese criterio.</td></tr>{% endfor %}

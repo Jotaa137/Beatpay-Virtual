@@ -11,7 +11,7 @@ core/forms.py        RegistroForm, LoginForm, EmisionForm (validación centraliz
 core/urls.py         10 rutas con name (links con {% url %})
 core/templates/      9 HTML (como la corrección del profe)
 core/data/demo.json  4 eventos + 3 transacciones con folio
-core/models.py       Cuenta (user, saldo, presupuesto, tarjeta)
+core/models.py      Cuenta (user, saldo, presupuesto, solicitud) + Tarjeta (cuenta 1-1, numero, estado, tipo) + Auditoria
 ```
 
 ## 2. Rutas (todas 200, verificado con pruebas automatizadas)

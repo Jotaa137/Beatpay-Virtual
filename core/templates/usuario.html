@@ -15,7 +15,7 @@
 <div class="bp-stat"><span class="bp-muted">Email</span><span>{{ target.email|default:'—' }}</span></div>
 <div class="bp-stat"><span class="bp-muted">Saldo</span><span class="num-big">${{ cuenta.saldo }}</span></div>
 <div class="bp-stat"><span class="bp-muted">Presupuesto</span><span class="num-big">${{ cuenta.presupuesto }}</span></div>
-<div class="bp-stat"><span class="bp-muted">Tarjeta</span><span class="badge {% if cuenta.tarjeta == 'Activa' %}text-bg-success{% else %}text-bg-danger{% endif %}">{{ cuenta.tarjeta }}</span></div>
+<div class="bp-stat"><span class="bp-muted">Tarjeta {{ tarjeta.tipo }} {{ tarjeta.numero }}</span><span class="badge {% if tarjeta.estado == 'Activa' %}text-bg-success{% else %}text-bg-danger{% endif %}">{{ tarjeta.estado }}</span></div>
 <div class="bp-stat"><span class="bp-muted">Rol</span>{% if target.is_staff %}<span class="badge text-bg-primary">staff</span>{% else %}<span class="badge text-bg-secondary">usuario</span>{% endif %}</div>
 <div class="bp-stat"><span class="bp-muted">Acceso</span>{% if target.is_active %}<span class="badge text-bg-success">sí</span>{% else %}<span class="badge text-bg-danger">no</span>{% endif %}</div>
 {% if cuenta.solicitud_cupo %}<div class="bp-stat"><span class="bp-muted">Pide cupo</span><span class="num-big">${{ cuenta.solicitud_cupo }}</span></div>{% endif %}

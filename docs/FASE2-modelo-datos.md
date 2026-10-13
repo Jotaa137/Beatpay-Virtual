@@ -104,7 +104,8 @@ PK = primaria | UQ = única | # = puede ser nulo (cargas sin evento)
 5. `email` único; `folio` único; TRANSACCION inmutable.
 6. Normal ve solo su CUENTA; admin (`es_admin`) ve todas (flujo 7 del doc de flujo).
 
-## 5. Referencia `models.py` (copiar a `core/models.py` cuando toque DB real)
+## 5. Referencia `models.py` (igual a `core/models.py`)
+> Ojo: TARJETA es tabla propia (no campo de CUENTA) y no hay EVENTO/TRANSACCION en DB (demo en JSON hasta Eval 3).
 ```python
 from django.db import models
 from django.contrib.auth.models import AbstractUser
