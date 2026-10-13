@@ -1,5 +1,6 @@
 # BeatPay Virtual - dependencias (instalar con: pip install -r requirements.txt)
 Django==6.1.1
+Faker==40.43.0
 
 # Dependencias automaticas de Django
 asgiref==3.12.1

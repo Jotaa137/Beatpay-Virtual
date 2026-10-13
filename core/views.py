@@ -267,6 +267,7 @@ def panel(request):
         'solicitudes': [u for u in todos if u.cuenta.solicitud_cupo],
         'q': q,
         'filtro': filtro,
+        'n_usuarios': len(todos),
         'n_bloqueados': sum(1 for u in todos if not u.is_active),
         'saldo_total': sum(c.saldo for c in cuentas),
         'saldo_promedio': round(sum(c.saldo for c in cuentas) / max(len(cuentas), 1)),
@@ -328,6 +329,14 @@ def usuario_detalle(request, user_id):
             tcuenta.save()
             _log(request.user.username, 'cupo', f'{target.username} rechazado')
             messages.success(request, f'Solicitud de {target.username} rechazada.')
+        elif action == 'eliminar':
+            if target == request.user:
+                messages.error(request, 'No puedes eliminarte a ti mismo.')
+            else:
+                _log(request.user.username, 'eliminar', f'usuario {target.username}')
+                target.delete()
+                messages.success(request, f'Usuario {target.username} eliminado.')
+                return redirect('panel')
         return redirect('usuario_detalle', user_id=target.id)
     historial = Auditoria.objects.filter(Q(usuario=target.username) | Q(detalle__icontains=target.username)).order_by('-fecha')[:10]
     return render(request, 'usuario.html', {

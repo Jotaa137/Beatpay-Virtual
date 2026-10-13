@@ -24,6 +24,7 @@
 <div class="card bp-card mb-3"><div class="card-body d-flex flex-wrap gap-2">
 <form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="action" value="toggle_tarjeta"><button class="btn btn-sm btn-outline-secondary" type="submit">Bloquear/desbloquear tarjeta</button></form>
 <form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="action" value="toggle_activo"><button class="btn btn-sm btn-outline-danger" type="submit">Bloquear/desbloquear acceso</button></form>
+<form method="post" class="d-inline" onsubmit="return confirm('¿Eliminar a {{ target.username }} y su cuenta?')">{% csrf_token %}<input type="hidden" name="action" value="eliminar"><button class="btn btn-sm btn-danger" type="submit">Eliminar usuario</button></form>
 <form method="post" class="d-flex gap-1">{% csrf_token %}<input type="hidden" name="action" value="set_pto"><input name="pto" type="number" min="0" step="1000" class="form-control form-control-sm bp-input" style="max-width:120px" placeholder="Presupuesto"><button class="btn btn-sm btn-outline-secondary" type="submit">Cambiar</button></form>
 {% if cuenta.solicitud_cupo %}
 <form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="action" value="aprobar_cupo"><button class="btn btn-sm btn-success" type="submit">Aprobar cupo</button></form>
