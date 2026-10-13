@@ -7,7 +7,7 @@ manage.py              control: runserver, migrate, shell
 requirements.txt       receta de librerías (pip install -r ...)
 db.sqlite3            base de datos local (NO se sube, ver .gitignore)
 venv/                 ambiente aislado (NO se sube)
-config/               ajustes Django: settings.py, urls.py principal
+BeatPay_Virtual/     ajustes Django: settings.py, urls.py principal
 core/                 app núcleo BeatPay: models.py (Cuenta), views.py, urls.py,
                       admin.py, migrations/
 core/data/demo.json   seed: eventos y transacciones de ejemplo

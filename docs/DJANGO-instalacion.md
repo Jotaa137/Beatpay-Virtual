@@ -27,7 +27,7 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
 ## 3. Compartir el trabajo (qué pasar y qué NO)
 Para enviarlo (pendrive, Drive, zip, GitHub) incluye:
-- `config/`, `core/` (con `core/templates/` dentro), `static/`, `docs/`
+- `BeatPay_Virtual/`, `core/` (con `core/templates/` y `core/static/` dentro), `docs/`
 - `manage.py`, `requirements.txt`
 - (`db.sqlite3` se regenera con `migrate`, no se comparte)
 

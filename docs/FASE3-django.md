@@ -4,8 +4,8 @@
 ## 1. Estructura
 ```text
 manage.py            control remoto (runserver, migrate)
-config/settings.py   app core, es-cl, America/Santiago, LOGIN_URL
-config/urls.py       /admin/ + delega a core/
+BeatPay_Virtual/settings.py   app core, es-cl, America/Santiago, LOGIN_URL
+BeatPay_Virtual/urls.py       /admin/ + delega a core/
 core/views.py        10 vistas (leen demo.json + DB y pasan contexto)
 core/forms.py        RegistroForm, LoginForm, EmisionForm (validación centralizada)
 core/urls.py         10 rutas con name (links con {% url %})
