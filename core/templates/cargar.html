@@ -2,16 +2,16 @@
 <html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cargar - BeatPay</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="{% static 'css/style.css' %}"></head>
+<link rel="stylesheet" href="{% static 'core/css/style.css' %}?v=4"></head>
 <body class="d-flex flex-column min-vh-100">
-<nav class="navbar"><div class="container-fluid px-4" style="display:flex;align-items:center;gap:10px"><a class="navbar-brand logo" href="index">BEATPAY <span>VIRTUAL</span></a><div class="d-flex gap-2 align-items-center" style="margin-left:auto"><a class="btn btn-secondary btn-sm" href="dashboard">Mi cuenta</a><a class="btn btn-outline-secondary btn-sm" href="logout">Salir</a></div></div></nav>
+<nav class="navbar"><div class="container-fluid px-4" style="display:flex;align-items:center;gap:10px"><a class="navbar-brand logo" href="{% url 'index' %}">BEATPAY <span>VIRTUAL</span></a><div class="d-flex gap-2 align-items-center" style="margin-left:auto"><a class="btn btn-secondary btn-sm" href="{% url 'dashboard' %}">Mi cuenta</a><a class="btn btn-outline-secondary btn-sm" href="{% url 'logout' %}">Cerrar sesión</a></div></div></nav>
 <main class="container py-5" style="max-width:520px"><div class="card bp-card"><div class="card-body p-4">
 <h2 class="h4">Cargar fondos</h2><p class="bp-muted">Saldo actual: <b id="actual"></b></p>
 <div id="ok" class="alert alert-success d-none"></div><div id="err" class="alert alert-danger d-none"></div>
 <form onsubmit="return cargar(event)">
 <label class="form-label">Monto en moneda local (CLP, mín. ${{ monto_min }})</label><input id="monto" class="form-control bp-input mb-3" type="number" min="{{ monto_min }}" step="1000" value="{{ monto_default }}" required>
 <button class="btn btn-success w-100 mb-2" type="submit">Confirmar carga</button>
-<a class="btn btn-secondary w-100" href="dashboard">Volver</a></form>
+<a class="btn btn-secondary w-100" href="{% url 'dashboard' %}">Volver</a></form>
 </div></div>
 <div id="boleta" class="card bp-card mt-3 d-none"><div class="card-body p-4">
 <h5>Boleta BeatPay</h5>
@@ -21,6 +21,6 @@
 <p class="mb-1">Saldo anterior: <b id="b-antes"></b> → Nuevo: <b id="b-nuevo"></b></p>
 <div class="d-flex flex-wrap gap-2 mt-2"><button class="btn btn-secondary" onclick="window.print()">Imprimir</button><button class="btn btn-outline-secondary" onclick="return descargarBoleta()">Descargar .txt</button></div>
 </div></div></main>
-<script src="{% static 'js/app.js' %}"></script>
+<script src="{% static 'core/js/app.js' %}?v=4"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body></html>

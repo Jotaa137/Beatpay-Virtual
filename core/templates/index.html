@@ -3,15 +3,15 @@
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BeatPay Virtual - Inicio</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="{% static 'css/style.css' %}">
+<link rel="stylesheet" href="{% static 'core/css/style.css' %}?v=4">
 </head>
 <body class="d-flex flex-column min-vh-100">
 <nav class="navbar sticky-top">
   <div class="container-fluid px-4" style="display:flex;align-items:center;gap:10px">
-    <a class="navbar-brand logo" href="index">BEATPAY <span>VIRTUAL</span></a>
+    <a class="navbar-brand logo" href="{% url 'index' %}">BEATPAY <span>VIRTUAL</span></a>
     <div class="d-flex gap-2 align-items-center" style="margin-left:auto">
-      <a class="btn btn-secondary btn-sm" href="login">Iniciar sesión</a>
-      <a class="btn btn-beatpay btn-sm" href="register">Crear cuenta</a>
+      <a class="btn btn-secondary btn-sm" href="{% url 'login' %}">Iniciar sesión</a>
+      <a class="btn btn-beatpay btn-sm" href="{% url 'register' %}">Crear cuenta</a>
     </div>
   </div>
 </nav>
@@ -21,9 +21,6 @@
 <span class="badge text-bg-primary mb-3">Music Pro Tour 2026 • Pagos digitales • {{ n_eventos }} eventos</span>
 <h1 class="display-5 fw-bold">Paga en conciertos sin efectivo</h1>
 <p class="bp-muted lead">Cuenta digital + Tarjeta virtual Visa + Saldo en moneda local para Music Pro Tour 2026</p>
-<div class="d-flex flex-wrap gap-2 justify-content-center mt-3">
-<a class="btn btn-outline-primary btn-lg" href="dashboard">Ver mi cuenta</a>
-</div>
 </div>
 <div class="row g-3">
 <div class="col-12 col-md-4"><div class="card bp-card h-100"><div class="card-body"><h5 class="card-title">Cuenta digital</h5><p class="bp-muted card-text">Saldo, presupuesto para eventos y movimientos.</p><span class="badge text-bg-success">Saldo en vivo</span> <span class="badge text-bg-secondary">Tarjeta incluida</span></div></div></div>
@@ -33,6 +30,6 @@
 <div class="card bp-card mt-3"><div class="card-body"><h5>¿Cómo funciona?</h5><p class="bp-muted mb-1">Cargas dinero → administras tu tarjeta → pagas en el evento → revisas historial y saldo.</p><p class="mb-0">Saldo demo: $80.000 | Presupuesto: $100.000 | Tarjeta: Activa</p><p class="bp-muted mb-0">Eventos adheridos: {% for e in eventos %}{{ e }}{% if not forloop.last %} • {% endif %}{% endfor %}</p></div></div>
 </main>
 <footer class="text-center py-4">Music Pro S.A. — Fase 1 — BeatPay Virtual</footer>
-<script src="{% static 'js/app.js' %}"></script>
+<script src="{% static 'core/js/app.js' %}?v=4"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body></html>

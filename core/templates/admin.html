@@ -1,0 +1,72 @@
+{% load static %}<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel - BeatPay</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'core/css/style.css' %}?v=4"></head>
+<body class="d-flex flex-column min-vh-100">
+<nav class="navbar"><div class="container-fluid px-4" style="display:flex;align-items:center;gap:10px"><a class="navbar-brand logo" href="{% url 'index' %}">BEATPAY <span>VIRTUAL</span></a><div class="d-flex gap-2 align-items-center" style="margin-left:auto"><a class="btn btn-outline-secondary btn-sm" href="{% url 'logout' %}">Cerrar sesión</a></div></div></nav>
+<main class="container py-4">
+<div class="admin-head mb-3"><div class="d-flex flex-wrap justify-content-between align-items-center gap-2"><h2 class="h4 mb-0">Panel de administración</h2><span class="badge text-bg-light">{% now "d/m/Y" %}</span></div></div>
+{% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags|default:'info' }}">{{ m }}</div>{% endfor %}{% endif %}
+
+<div class="row g-3">
+<!-- IZQUIERDA: resumen + solicitudes -->
+<div class="col-12 col-lg-4">
+<h5 class="mt-3">Resumen del sistema</h5>
+<div class="card bp-card mb-3"><div class="card-body">
+<div class="bp-stat"><span class="bp-muted"><span class="stat-ico">🔒</span>Accesos bloqueados</span><span class="num-big">{{ n_bloqueados }}</span></div>
+<div class="bp-stat"><span class="bp-muted"><span class="stat-ico">💰</span>Saldo total</span><span class="num-big">${{ saldo_total }}</span></div>
+<div class="bp-stat"><span class="bp-muted"><span class="stat-ico">📊</span>Saldo promedio</span><span class="num-big">${{ saldo_promedio }}</span></div>
+<div class="bp-stat"><span class="bp-muted"><span class="stat-ico">💳</span>Tarjetas</span><span><span class="badge text-bg-success">{{ tarjetas_activas }} activas</span> <span class="badge text-bg-danger">{{ tarjetas_bloqueadas }} bloqueadas</span></span></div>
+<div class="bp-stat"><span class="bp-muted"><span class="stat-ico">🧾</span>Volumen pagos</span><span class="num-big">${{ total_pagos }}</span></div>
+<div class="bp-stat"><span class="bp-muted"><span class="stat-ico">🧾</span>Volumen cargas</span><span class="num-big">${{ total_cargas }}</span></div>
+</div></div>
+{% if solicitudes %}
+<h5 class="mt-3">Solicitudes de cupo pendientes</h5>
+<div class="card bp-card soli-nueva mb-3"><div class="card-body">
+{% for u in solicitudes %}<div class="d-flex flex-wrap gap-2 align-items-center mb-2"><span class="avatar">{{ u.username|slice:':1'|upper }}</span><span><b>{{ u.username }}</b> pide <b>${{ u.cuenta.solicitud_cupo }}</b> <span class="bp-muted">(actual: ${{ u.cuenta.presupuesto }})</span></span><a href="{% url 'usuario_detalle' u.id %}" class="btn btn-sm btn-outline-primary">Revisar</a></div>{% endfor %}
+</div></div>
+{% endif %}
+</div>
+
+<!-- DERECHA: usuarios y tarjetas -->
+<div class="col-12 col-lg-8">
+<h5 class="mt-3">Emitir tarjeta</h5>
+<div class="card bp-card mb-3"><div class="card-body">
+<form method="post" class="row g-2">{% csrf_token %}<input type="hidden" name="action" value="emitir">
+<div class="col-6"><input name="nombre" class="form-control bp-input" required placeholder="Nombre"></div>
+<div class="col-6"><input name="username" class="form-control bp-input" required minlength="3" placeholder="Usuario"></div>
+<div class="col-6"><input name="email" class="form-control bp-input" type="email" required placeholder="Email"></div>
+<div class="col-6"><input name="pass" class="form-control bp-input" type="password" required minlength="6" placeholder="Clave (mín. 6)"></div>
+<div class="col-12"><button class="btn btn-beatpay" type="submit">Emitir tarjeta</button></div>
+</form>
+</div></div>
+<h5 class="mt-3">Usuarios y tarjetas</h5>
+<div class="card bp-card"><div class="card-body">
+<form method="get" class="d-flex flex-wrap gap-2 align-items-center mb-3">
+<input name="q" class="form-control bp-input" style="max-width:220px" placeholder="Buscar usuario..." value="{{ q }}">
+<select name="filtro" class="form-select bp-input" style="max-width:200px" onchange="this.form.submit()">
+<option value="" {% if not filtro %}selected{% endif %}>Todas</option>
+<option value="activas" {% if filtro == 'activas' %}selected{% endif %}>Activas</option>
+<option value="bloqueadas" {% if filtro == 'bloqueadas' %}selected{% endif %}>Bloqueadas</option>
+</select>
+<button class="btn btn-secondary" type="submit">Buscar</button>
+</form>
+<div class="table-responsive"><table class="table table-striped table-hover mb-0">
+<thead><tr><th>Usuario</th><th class="num">Saldo</th><th class="num">Presupuesto</th><th>Tarjeta</th><th>Acceso</th><th>Detalle</th></tr></thead>
+<tbody>
+{% for u in usuarios %}<tr>
+<td><span class="avatar">{{ u.username|slice:':1'|upper }}</span><b>{{ u.username }}</b><br><span class="bp-muted">{{ u.first_name|default:'—' }}</span></td>
+<td class="num">${{ u.cuenta.saldo }}</td>
+<td class="num">${{ u.cuenta.presupuesto }}</td>
+<td><span class="badge {% if u.cuenta.tarjeta == 'Activa' %}text-bg-success{% else %}text-bg-danger{% endif %}">{{ u.cuenta.tarjeta }}</span></td>
+<td>{% if u.is_active %}<span class="badge text-bg-success">sí</span>{% else %}<span class="badge text-bg-danger">no</span>{% endif %}</td>
+<td><a href="{% url 'usuario_detalle' u.id %}" class="btn btn-sm btn-outline-primary">Ver</a></td>
+</tr>{% empty %}<tr><td colspan="6" class="text-center bp-muted py-4">🔍 Sin usuarios con ese criterio.</td></tr>{% endfor %}
+</tbody></table></div>
+</div></div>
+</div>
+</div></main>
+<script src="{% static 'core/js/app.js' %}?v=4"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body></html>

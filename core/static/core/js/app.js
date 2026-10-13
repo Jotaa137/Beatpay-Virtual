@@ -29,7 +29,6 @@ const BeatPay = (() => {
   function hide(el) { if (el) el.classList.add('d-none'); }
   return { K, init, fmt, getSaldo, setSaldo, getTarjeta, setTarjeta, getTx, addTx, show, hide };
 })();
-function fmt(n) { return BeatPay.fmt(n); }
 
 /* SECCION 2: ayuda (mostrar/ocultar clave) */
 function verPass(id, btn) {
@@ -40,7 +39,29 @@ function verPass(id, btn) {
   if (btn) btn.textContent = show ? '🙈' : '👁';
   return false;
 }
-/* SECCION 3: pagos (cargar, pagar) */
+/* SECCION 3: tema oscuro / claro (con memoria) */
+function initTema() {
+  const t = localStorage.getItem('beatpay_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', t);
+  let b = document.getElementById('btn-tema');
+  if (!b) {
+    b = document.createElement('button');
+    b.id = 'btn-tema';
+    b.title = 'Modo oscuro / claro';
+    b.setAttribute('onclick', 'return toggleTema()');
+    document.body.appendChild(b);
+  }
+  b.textContent = t === 'dark' ? '☀️' : '🌙';
+}
+function toggleTema() {
+  const actual = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', actual);
+  localStorage.setItem('beatpay_theme', actual);
+  initTema();
+  return false;
+}
+
+/* SECCION 4: pagos (cargar, pagar) */
 function cargar(e) {
   e.preventDefault();
   const m = Number(document.getElementById('monto').value);
@@ -81,7 +102,7 @@ function pagar(e) {
   return false;
 }
 
-/* SECCION 4: historial, tarjeta y boleta */
+/* SECCION 5: historial, tarjeta y boleta */
 function render() {
   const f = document.getElementById('filtro') ? document.getElementById('filtro').value : '';
   const q = document.getElementById('buscador') ? document.getElementById('buscador').value.toLowerCase() : '';
@@ -95,17 +116,6 @@ function render() {
   if (resume) resume.innerHTML = `<span class="badge text-bg-primary">Pagos: ${BeatPay.fmt(totalPagos)}</span> <span class="badge text-bg-success">Cargas: ${BeatPay.fmt(totalCargas)}</span> <span class="badge text-bg-light text-dark">${tx.length} movs</span>`;
   if (box) box.innerHTML = '<table class="table table-striped table-hover mb-0"><thead><tr><th>Fecha</th><th>Evento</th><th>Monto</th><th>Tipo</th><th>Estado</th></tr></thead><tbody>' +
     tx.slice().reverse().map(t => `<tr><td>${t.fecha}</td><td>${t.evento}</td><td>$${Number(t.monto).toLocaleString('es-CL')}</td><td><span class="badge ${t.tipo === 'PAGO' ? 'text-bg-primary' : 'text-bg-success'}">${t.tipo}</span></td><td><span class="badge text-bg-success">${t.estado}</span></td></tr>`).join('') + '</tbody></table>';
-}
-function refresh() {
-  const e = BeatPay.getTarjeta();
-  const b = document.getElementById('badge');
-  if (b) { b.textContent = e; b.className = 'badge ' + (e === 'Activa' ? 'text-bg-success' : 'text-bg-danger'); }
-  const btn = document.getElementById('btnToggle');
-  if (btn) btn.textContent = e === 'Activa' ? 'Bloquear tarjeta' : 'Activar tarjeta';
-}
-function toggle() {
-  BeatPay.setTarjeta(BeatPay.getTarjeta() === 'Activa' ? 'Bloqueada' : 'Activa');
-  refresh();
 }
 let ultimaBoleta = null;
 function mostrarBoleta(d) {
@@ -132,7 +142,7 @@ function descargarBoleta() {
   return false;
 }
 
-/* SECCION 5: inicio automatico */
+/* SECCION 6: inicio automatico */
 function initPagos() {
   const a = document.getElementById('actual'); if (a) a.textContent = BeatPay.fmt(BeatPay.getSaldo());
   const s = document.getElementById('saldo'); if (s && document.getElementById('evento')) s.textContent = BeatPay.fmt(BeatPay.getSaldo());
@@ -140,6 +150,7 @@ function initPagos() {
 }
 document.addEventListener('DOMContentLoaded', () => {
   BeatPay.init();
+  initTema();
   initPagos();
   // Dashboard, tarjeta e historial los pinta el servidor (por usuario).
   // refresh/render solo se usan al filtrar o al operar la tarjeta.

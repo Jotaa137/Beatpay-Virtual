@@ -1,27 +1,30 @@
-# FASE 3 — Django prototipo funcional (en curso)
-> Sin base de datos propia todavía: los datos son mock en JSON.
+# FASE 3 — Django prototipo funcional (listo)
+> Modelos + auth real con DB (`Cuenta`) y mock JSON (`demo.json`) para eventos y transacciones.
 
 ## 1. Estructura
 ```text
 manage.py            control remoto (runserver, migrate)
-config/settings.py   apps (pagos, rest_framework), templates/, static/, es-cl, America/Santiago
-config/urls.py       /admin/ + delega a pagos/
-pagos/views.py       8 vistas (leen demo.json y pasan contexto)
-pagos/urls.py        9 rutas (las  de Fase 1, sin tocar links)
-pagos/data/demo.json cuenta demo + 4 eventos + 3 transacciones con folio
-pagos/models.py      vacío (llega con la DB)
+config/settings.py   app core, es-cl, America/Santiago, LOGIN_URL
+config/urls.py       /admin/ + delega a core/
+core/views.py        10 vistas (leen demo.json + DB y pasan contexto)
+core/forms.py        RegistroForm, LoginForm, EmisionForm (validación centralizada)
+core/urls.py         10 rutas con name (links con {% url %})
+core/templates/      9 HTML (como la corrección del profe)
+core/data/demo.json  4 eventos + 3 transacciones con folio
+core/models.py       Cuenta (user, saldo, presupuesto, tarjeta)
 ```
 
 ## 2. Rutas (todas 200, verificado con pruebas automatizadas)
-`/` `index` `register` `login` `dashboard` `cargar`
-`pagar` `transacciones` `tarjeta` (+ `admin/`)
+`/` `index` `register` `login` `logout` `dashboard` `cargar`
+`pagar` `transacciones` `tarjeta` `panel` (+ `admin/`)
 
 ## 3. Datos mock → vistas → DTL
 - `demo.json`: cuenta (demo@beatpay.cl, $80.000, pto $100.000, Activa), eventos y transacciones.
 - `dashboard`: contexto `usuario, saldo, pto, tarjeta, ultimas, tx_json`. Pinta `${{ saldo }}`, badge con `{% if tarjeta == 'Activa' %}` y últimas con `{% for u in ultimas %}{% empty %}`.
 - `transacciones`: contexto `transacciones, total_pagos, total_cargas, tx_json`. Tabla con `{% for t %}{% if t.tipo %}{% empty %}` y resumen con filtro `{{ total_pagos|add:total_cargas }}`.
-- `index`: mensaje flash (`messages.info` + `{% if messages %}{% for m %}`), contador y lista de eventos (`{{ n_eventos }}`, `{% for e in eventos %}` con `forloop.last`).
-- `register`/`login`: `{{ min_pass }}`, `{{ presupuesto_default }}`, `{{ demo_email }}`.
+- `index`: contador y lista de eventos (`{{ n_eventos }}`, `{% for e in eventos %}` con `forloop.last`) + `{% if messages %}{% for m %}`.
+- `register`: `{{ min_pass }}`, `{{ presupuesto_default }}`; crea `User` + `Cuenta` y entra solo.
+- `login`: usuario + clave (`authenticate`), error con `messages`, demo visibles.
 - `cargar`/`pagar`: `{{ monto_min }}`, `{{ monto_default }}`; select de eventos con `{% for e in eventos %}`.
 - `tarjeta`: `{{ tipo }}` + badge con `{% if %}`.
 - Bucles y sumas explícitos en Python (`for`/`if` en `transacciones` y `dashboard`).

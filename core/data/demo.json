@@ -1,11 +1,4 @@
 {
-  "cuenta": {
-    "usuario": "demo@beatpay.cl",
-    "nombre": "Juan Pérez",
-    "saldo": 80000,
-    "presupuesto": 100000,
-    "tarjeta": "Activa"
-  },
   "eventos": [
     "Music Pro Tour",
     "Rock Festival",

@@ -6,8 +6,6 @@
 - **Python:** el lenguaje. Todo corre sobre él. Revisa que exista con `python --version`.
 - **Ambiente virtual (`venv/`):** cajita aislada con las librerías solo de este proyecto. Ya está creada. No se borra, no se comparte, no se mete a zip.
 - **Django:** el backend que pide tu caso (rutas, vistas, login, base de datos, panel admin).
-- **djangorestframework (DRF):** para la API REST con JSON (Fase 5).
-- **djangorestframework-simplejwt:** login con tokens JWT para la API (Fase 5).
 - **`requirements.txt`:** la receta: lista exacta de librerías y versiones. Sirve para instalar todo igual en otro PC.
 - **`manage.py`:** el control remoto del proyecto (prender servidor, migrar, crear cosas).
 - **Flask:** NO se usa en este proyecto. No lo instales.
@@ -29,8 +27,9 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
 ## 3. Compartir el trabajo (qué pasar y qué NO)
 Para enviarlo (pendrive, Drive, zip, GitHub) incluye:
-- `config/`, `pagos/`, `templates/`, `static/`, `docs/`
-- `manage.py`, `requirements.txt`, `db.sqlite3`
+- `config/`, `core/` (con `core/templates/` dentro), `static/`, `docs/`
+- `manage.py`, `requirements.txt`
+- (`db.sqlite3` se regenera con `migrate`, no se comparte)
 
 **NO incluyas `venv/`** (pesa mucho y no funciona en otro PC; se recrea allá).
 
@@ -62,6 +61,6 @@ En VS Code además: `Ctrl+Shift+P` → `Python: Select Interpreter` → elegir `
 | `django-admin` / `python` no se reconoce | Python no está instalado o no está en el PATH (reinstala marcando "Add to PATH") |
 | `Activate.ps1` no se puede cargar | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
 | `pip` instala pero Django no aparece | Hay 2 Python: usa `python -m pip install -r requirements.txt` |
-| Página 404 en `dashboard` u otra | Faltan rutas: revisa `pagos/urls.py` (ya están las 9 creadas) |
+| Página 404 en `dashboard` u otra | Faltan rutas: revisa `core/urls.py` (ya están las 10 creadas) |
 | `db.sqlite3` no existe allá | Corre `python manage.py migrate` (paso 5 de arriba) |
 | Los cambios no se ven en el navegador | `Ctrl+F5` (caché). Al HTML/CSS/JS no hay que reiniciar nada |

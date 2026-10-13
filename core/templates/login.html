@@ -2,19 +2,22 @@
 <html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Login - BeatPay</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="{% static 'css/style.css' %}"></head>
+<link rel="stylesheet" href="{% static 'core/css/style.css' %}?v=4"></head>
 <body class="d-flex flex-column min-vh-100">
-<nav class="navbar"><div class="container-fluid px-4" style="display:flex;align-items:center;gap:10px"><a class="navbar-brand logo" href="index">BEATPAY <span>VIRTUAL</span></a><div class="d-flex gap-2 align-items-center" style="margin-left:auto"><a class="btn btn-secondary btn-sm" href="index">Inicio</a><a class="btn btn-beatpay btn-sm" href="register">Registro</a></div></div></nav>
+<nav class="navbar"><div class="container-fluid px-4" style="display:flex;align-items:center;gap:10px"><a class="navbar-brand logo" href="{% url 'index' %}">BEATPAY <span>VIRTUAL</span></a><div class="d-flex gap-2 align-items-center" style="margin-left:auto"><a class="btn btn-secondary btn-sm" href="{% url 'index' %}">Inicio</a><a class="btn btn-beatpay btn-sm" href="{% url 'register' %}">Registro</a></div></div></nav>
 <main class="container py-5" style="max-width:480px"><div class="card bp-card"><div class="card-body p-4">
 <h2 class="h4">Iniciar sesión</h2><p class="bp-muted">Acceso seguro</p>
 {% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags|default:'info' }}">{{ m }}</div>{% endfor %}{% endif %}
 <form method="post">{% csrf_token %}
-<label class="form-label">Email</label><input name="email" id="email" class="form-control bp-input mb-3" type="email" required placeholder="{{ demo_email }}">
+<label class="form-label">Nombre de usuario</label><input name="username" id="username" class="form-control bp-input mb-3" required placeholder="Ej: admin">
 <label class="form-label">Contraseña</label><div class="input-group mb-3"><input name="pass" id="pass" class="form-control bp-input" type="password" required placeholder="••••••••"><button class="btn btn-secondary" type="button" onclick="return verPass('pass',this)" title="Mostrar/ocultar">👁</button></div>
 <button class="btn btn-beatpay w-100" type="submit">Entrar</button>
 </form>
-<p class="bp-muted mt-3 mb-0">¿No tienes cuenta? <a href="register" class="link-primary">Regístrate</a></p>
+<p class="bp-muted mt-3 mb-0">¿No tienes cuenta? <a href="{% url 'register' %}" class="link-primary">Regístrate</a></p>
+</div></div>
+<div class="card bp-card mt-3"><div class="card-body p-3">
+<p class="bp-muted mb-0" style="font-size:.85rem">Cuentas demo — admin: <b>admin</b> / staff — usuario: <b>juan</b> (clave de ambas: <b>beatpay123</b>)</p>
 </div></div></main>
-<script src="{% static 'js/app.js' %}"></script>
+<script src="{% static 'core/js/app.js' %}?v=4"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body></html>
