@@ -76,6 +76,21 @@ python manage.py runserver       # prende en http://127.0.0.1:8000/ (Ctrl+C apag
 python manage.py shell           # consola Django (consultas y arreglos)
 ```
 
+### Faker: datos de prueba (`seed_usuarios`)
+```powershell
+pip install Faker                         # se instala una vez
+python manage.py seed_usuarios 100         # crea 100 (cambia el número a gusto)
+python manage.py seed_usuarios 1000       # prueba de carga mayor
+```
+Cómo funciona: `core/management/commands/seed_usuarios.py` es un **comando Django**
+(hereda `BaseCommand`; Django lo encuentra por estar en `management/commands/`).
+Con `Faker('es_CL')` inventa nombre, apellido y email chilenos; el usuario queda
+`nombre.apellido` (sin tildes, único: si existe le suma número); cada uno nace con
+`Cuenta` (saldo y presupuesto al azar) + `Tarjeta` Activa con número único y clave
+`beatpay123`. Verifícalos en `/admin/` → Users. Para borrarlos:
+`User.objects.exclude(username__in=['admin','juan']).delete()` en el `shell`
+(o bórralos en `/admin/` con los checks).
+
 ### Consola Django (`shell`) — lo que más usamos
 ```python
 from django.db import connection
