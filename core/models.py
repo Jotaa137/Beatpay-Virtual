@@ -13,7 +13,7 @@ def numero_default():
 
 class Cuenta(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='cuenta')
-    saldo = models.IntegerField(default=80000)
+    saldo = models.IntegerField(default=0)
     presupuesto = models.IntegerField(default=100000)
     solicitud_cupo = models.IntegerField(null=True, blank=True)
 

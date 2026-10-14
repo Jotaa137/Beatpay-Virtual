@@ -339,6 +339,7 @@ def panel(request):
         'tarjetas_bloqueadas': Tarjeta.objects.exclude(estado='Activa').count(),
         'total_pagos': sum(t.monto for t in Transaccion.objects.filter(tipo='PAGO')),
         'total_cargas': sum(t.monto for t in Transaccion.objects.filter(tipo='CARGA')),
+        'mi_historial': Auditoria.objects.filter(usuario=request.user.username).order_by('-fecha')[:8],
     })
 
 

@@ -24,7 +24,7 @@
 [INICIO]
   → ingresar nombre, usuario, email, password (+ presupuesto opcional)
   → ¿datos válidos? (nombre ≥2, usuario ≥3 sin @, email con @, password ≥6) ─NO→ error
-  → SÍ → crear User + Cuenta ($80.000) + Tarjeta Activa → ir a dashboard
+  → SÍ → crear User + Cuenta ($0) + Tarjeta Activa → ir a dashboard → cargar fondos
 Login: usuario + password → ¿existe y es correcta? ─NO→ error ─SÍ→ según rol
 ```
 

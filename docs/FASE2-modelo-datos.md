@@ -47,7 +47,7 @@ PK = primaria | UQ = única
 |---|---|---|
 | id | AutoField PK | — |
 | user | OneToOne → User | un usuario = una cuenta |
-| saldo | Integer ≥ 0 | default 80000, jamás negativo |
+| saldo | Integer ≥ 0 | default 0, jamás negativo (el usuario carga fondos) |
 | presupuesto | Integer ≥ 0 | default 100000 (tope de gasto) |
 | solicitud_cupo | Integer nulo | pedido pendiente de aumento |
 
