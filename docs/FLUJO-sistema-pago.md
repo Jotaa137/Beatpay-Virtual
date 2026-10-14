@@ -1,116 +1,87 @@
 # Flujo del sistema de pago — BeatPay Virtual
-> Cómo debe ir el flujo de la aplicación web de pago que exige el proyecto.
-> Versión oficial: **un solo diagrama en ciclo**. Abajo el detalle por rama.
+> Todo validado en el servidor. Versión oficial: **un solo diagrama en ciclo**.
 
 ## 0. Diagrama único (el que se dibuja)
 ```text
-[INICIO] → login/registro (¿datos válidos? NO→error) → [DASHBOARD]
-  ├─ cargar (¿monto ≥1000? ¿confirma?) → suma → boleta → DASHBOARD
-  ├─ pagar (¿Activa? ¿monto ok? ¿saldo ok? ¿confirma?) → resta → boleta → DASHBOARD
-  ├─ historial (filtrar/buscar) → DASHBOARD
-  └─ tarjeta (bloquear/activar) → DASHBOARD → [FIN]
+[INICIO] → login/registro (¿datos válidos? NO→error) → ¿rol? → DASHBOARD o PANEL
+  ├─ cargar (¿monto ≥1000?) → suma → boleta → DASHBOARD
+  ├─ pagar (¿Activa? ¿monto ok? ¿saldo ok?) → resta → boleta → DASHBOARD
+  ├─ historial (filtrar/buscar en servidor) → DASHBOARD
+  ├─ tarjeta (bloquear/activar en servidor) → DASHBOARD
+  └─ panel (solo staff): resumen, solicitudes, emitir, usuarios → detalle
 ```
-Símbolos: óvalo = inicio-fin, rectángulo = proceso, rombo = las 4 preguntas, flechas SÍ/NO rotuladas.
 
 ## 1. Flujo general de navegación
 ```text
 [INICIO index]
-  ├─ Crear cuenta → register → dashboard
-  ├─ Iniciar sesión → login → dashboard
-  └─ Ver cuenta demo → dashboard
-        ├─ Cargar fondos → dashboard (saldo actualizado)
-        ├─ Realizar pago → dashboard (saldo actualizado)
-        ├─ Ver transacciones (filtro + buscador)
-        └─ Administrar tarjeta (bloquear / activar)
+  ├─ Crear cuenta → register (nombre, usuario, email, clave, pto) → dashboard
+  ├─ Iniciar sesión → login (usuario + clave) → dashboard (normal) o panel (staff)
+  └─ dashboard: Cargar, Pagar, Transacciones, Tarjeta, Operaciones (transferir, pedir cupo)
 ```
 
 ## 2. Registro e inicio de sesión
 ```text
 [INICIO]
-  → ingresar nombre, email, password (+ presupuesto opcional)
-  → ¿datos válidos? (nombre ≥2, email con @, password ≥6) ─NO→ mostrar error, volver
-  → SÍ → crear cuenta + tarjeta virtual Activa + saldo inicial
-  → ir a dashboard
-[FIN]
-
-Login: email + password → ¿existe y es correcta? ─NO→ error ─SÍ→ dashboard
+  → ingresar nombre, usuario, email, password (+ presupuesto opcional)
+  → ¿datos válidos? (nombre ≥2, usuario ≥3 sin @, email con @, password ≥6) ─NO→ error
+  → SÍ → crear User + Cuenta ($80.000) + Tarjeta Activa → ir a dashboard
+Login: usuario + password → ¿existe y es correcta? ─NO→ error ─SÍ→ según rol
 ```
 
-## 3. Cargar fondos (modifica el saldo)
+## 3. Cargar fondos (servidor)
 ```text
-[INICIO en dashboard]
-  → ver saldo actual
-  → ingresar monto
-  → ¿monto >= $1.000? ─NO→ error "Monto mínimo $1.000", volver
-  → SÍ → pedir confirmación ─NO→ FIN (sin cambios)
-  → SÍ → nuevo_saldo = saldo + monto
-  → guardar transacción {tipo: CARGA, estado: Aprobado, fecha, evento: "Carga BeatPay"}
-  → mostrar boleta con folio + "Carga exitosa. Nuevo saldo: $X"
-[FIN en dashboard]
+→ ver saldo actual (servidor)
+→ ingresar monto → ¿monto >= $1.000? ─NO→ "Monto mínimo $1.000."
+→ SÍ → nuevo_saldo = saldo + monto → guardar TRANSACCION CARGA con folio
+→ boleta con folio + "Carga exitosa. Nuevo saldo: $X"
 ```
 
-## 4. Realizar pago (flujo principal exigido por el caso)
+## 4. Realizar pago (servidor)
 ```text
-[INICIO en dashboard]
-  1. identificar usuario (sesión)
-  2. identificar tarjeta
-  3. ¿tarjeta = Activa? ─NO→ error "Tarjeta no habilitada", FIN
-  4. elegir evento/comercio + ingresar monto
-  5. ¿monto >= $1.000? ─NO→ error "Monto inválido", FIN
-  6. ¿saldo >= monto? ─NO→ error "Saldo insuficiente", FIN
-  7. SÍ → si gastado + monto > presupuesto avisar "Te pasaste del presupuesto"
-  8. pedir confirmación
-     → ¿confirma? ─NO→ FIN (sin cambios)
-     → SÍ → nuevo_saldo = saldo - monto
-  9. guardar transacción {tipo: PAGO, estado: Aprobado, fecha, evento}
-  10. mostrar boleta con folio + "Pago aprobado. Nuevo saldo: $X"
-[FIN en dashboard / historial]
+1. ¿tarjeta = Activa? ─NO→ "Tu tarjeta no está activa.", FIN
+2. elegir evento + monto → ¿monto >= $1.000? ─NO→ error, FIN
+3. ¿saldo >= monto? ─NO→ "Saldo insuficiente...", FIN
+4. si monto > presupuesto → aviso "Te pasaste del presupuesto..." (igual se paga)
+5. nuevo_saldo = saldo - monto → guardar TRANSACCION PAGO con folio
+6. boleta con folio + "Pago aprobado..."
 ```
 
 ## 5. Administrar tarjeta virtual
 ```text
-[INICIO] → ver datos (**** 1234, estado)
-  → ¿estado = Activa? → botón "Bloquear" → estado = Bloqueada
-  → ¿estado = Bloqueada? → botón "Activar" → estado = Activa
-  → solo Activa permite pagar (ver flujo 4, paso 3)
-[FIN]
-Estados posibles: Activa | Bloqueada
+→ ver número real + estado
+→ botón Bloquear/Activar (POST al servidor) → queda registrado
+→ solo Activa permite pagar y transferir
+Estados: Activa | Bloqueada
 ```
 
-## 6. Historial de transacciones
+## 6. Historial de transacciones (servidor, por usuario)
 ```text
-[INICIO] → listar todas (más recientes primero)
-  → opcional filtrar por tipo (Todas / Pagos / Cargas)
-  → opcional buscar por evento/comercio
-  → ver resumen: total Pagos $X | total Cargas $Y | N movs
-Cada fila: fecha | evento | monto | tipo | estado
-[FIN]
+→ listar las suyas (más recientes primero, con folio)
+→ filtrar por tipo + buscar por evento (GET al servidor)
+→ resumen: total Pagos $X | total Cargas $Y
+Cada fila: folio | fecha | evento | monto | tipo | estado
 ```
 
-## 7. Flujo admin (Fases 3-4, a futuro)
+## 7. Flujo admin
 ```text
-[INICIO login admin]
-  → ¿is_staff? ─NO→ dashboard normal (solo su cuenta)
-  → SÍ → panel admin: tabla de TODAS las cuentas
-        ├─ ver saldo/tarjeta/transacciones de cada usuario
-        ├─ bloquear o activar tarjetas
-        └─ ajustar saldos (queda registrado como transacción)
-[FIN]
+[login staff] → /panel: resumen, solicitudes de cupo, emitir tarjeta,
+buscar/filtrar usuarios → [Ver] → detalle del usuario:
+cuenta, tarjeta, acciones (tarjeta, acceso, presupuesto, cupo, eliminar)
++ su auditoría. Todo con mensajes y registro en auditoría.
 ```
 
 ## 8. Tabla de errores del sistema
-| Caso | Mensaje | Se descuenta saldo |
+| Caso | Mensaje | Efecto en saldo |
 |---|---|---|
-| Monto < $1.000 | "Monto mínimo $1.000" / "Monto inválido" | No |
-| Tarjeta Bloqueada al pagar | "Tarjeta no habilitada" | No |
-| Saldo insuficiente | "Saldo insuficiente. Tienes $X..." | No |
-| Usuario cancela confirmación | (sin mensaje, vuelve) | No |
+| Monto < $1.000 | "Monto mínimo $1.000." | No cambia |
+| Tarjeta Bloqueada al pagar | "Tu tarjeta no está activa." | No cambia |
+| Saldo insuficiente | "Saldo insuficiente. Tienes $X." | No cambia |
+| Sobre presupuesto | "Te pasaste del presupuesto..." | Se paga igual |
 | Carga válida | "Carga exitosa. Nuevo saldo: $X" | Suma |
-| Pago válido | "Pago aprobado por $X. Nuevo saldo: $Y" | Resta |
+| Pago válido | "Pago aprobado por $X..." | Resta |
+| Transferencia válida | "Transferiste $X a..." | Mueve entre cuentas |
 
 ## 9. Cómo presentarlo en el informe
-Elegido: **un solo diagrama en ciclo** (no uno por flujo).
-1. Dibuja: INICIO → login → dashboard → 4 ramas (cargar, pagar, historial, tarjeta) que vuelven al dashboard → FIN. Los errores también terminan en FIN.
-2. Rombo solo para las 4 preguntas (datos válidos, monto válido, tarjeta activa, saldo suficiente) con SÍ/NO rotulados.
+1. Dibuja: INICIO → login → rol → dashboard/panel → ramas que vuelven → FIN.
+2. Rombo solo para las preguntas (datos, monto, tarjeta, saldo) con SÍ/NO.
 3. Anexa la tabla de errores (punto 8).
-4. El flujo admin (punto 7) se menciona como futuro con Django.

@@ -49,6 +49,10 @@ pip install -r requirements.txt
 # 5. Preparar la base de datos
 python manage.py migrate
 
+# 5b. Crear tu admin y (opcional) datos de prueba
+python manage.py createsuperuser
+python manage.py seed_usuarios 100
+
 # 6. Prender
 python manage.py runserver
 # Abrir http://127.0.0.1:8000/

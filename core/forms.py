@@ -28,3 +28,5 @@ class EmisionForm(forms.Form):
     email = forms.EmailField(error_messages={'invalid': 'Email inválido.'})
     password = forms.CharField(min_length=6, widget=forms.PasswordInput,
                                error_messages={'min_length': 'La clave debe tener al menos 6 caracteres.'})
+    saldo = forms.IntegerField(required=False, min_value=0)
+    presupuesto = forms.IntegerField(required=False, min_value=0)

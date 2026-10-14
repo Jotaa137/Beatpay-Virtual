@@ -4,31 +4,5 @@
     "Rock Festival",
     "Food & Music",
     "Tienda Asociada"
-  ],
-  "transacciones": [
-    {
-      "fecha": "10/12/2026",
-      "evento": "Music Pro Tour",
-      "monto": 15000,
-      "tipo": "PAGO",
-      "estado": "Aprobado",
-      "folio": "BP-000001"
-    },
-    {
-      "fecha": "11/12/2026",
-      "evento": "Rock Festival",
-      "monto": 8000,
-      "tipo": "PAGO",
-      "estado": "Aprobado",
-      "folio": "BP-000002"
-    },
-    {
-      "fecha": "12/12/2026",
-      "evento": "Food & Music",
-      "monto": 12000,
-      "tipo": "PAGO",
-      "estado": "Aprobado",
-      "folio": "BP-000003"
-    }
   ]
 }

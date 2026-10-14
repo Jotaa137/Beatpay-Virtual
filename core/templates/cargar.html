@@ -6,21 +6,21 @@
 <body class="d-flex flex-column min-vh-100">
 <nav class="navbar"><div class="container-fluid px-4" style="display:flex;align-items:center;gap:10px"><a class="navbar-brand logo" href="{% url 'index' %}">BEATPAY <span>VIRTUAL</span></a><div class="d-flex gap-2 align-items-center" style="margin-left:auto"><a class="btn btn-secondary btn-sm" href="{% url 'dashboard' %}">Mi cuenta</a><a class="btn btn-outline-secondary btn-sm" href="{% url 'logout' %}">Cerrar sesión</a></div></div></nav>
 <main class="container py-5" style="max-width:520px"><div class="card bp-card"><div class="card-body p-4">
-<h2 class="h4">Cargar fondos</h2><p class="bp-muted">Saldo actual: <b id="actual"></b></p>
-<div id="ok" class="alert alert-success d-none"></div><div id="err" class="alert alert-danger d-none"></div>
-<form onsubmit="return cargar(event)">
-<label class="form-label">Monto en moneda local (CLP, mín. ${{ monto_min }})</label><input id="monto" class="form-control bp-input mb-3" type="number" min="{{ monto_min }}" step="1000" value="{{ monto_default }}" required>
+<h2 class="h4">Cargar fondos</h2><p class="bp-muted">Saldo actual: <b>${{ saldo }}</b></p>
+{% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags|default:'info' }}">{{ m }}</div>{% endfor %}{% endif %}
+<form method="post">{% csrf_token %}
+<label class="form-label">Monto en moneda local (CLP, mín. ${{ monto_min }})</label><input name="monto" id="monto" class="form-control bp-input mb-3" type="number" min="{{ monto_min }}" step="1000" value="{{ monto_default }}" required>
 <button class="btn btn-success w-100 mb-2" type="submit">Confirmar carga</button>
 <a class="btn btn-secondary w-100" href="{% url 'dashboard' %}">Volver</a></form>
 </div></div>
-<div id="boleta" class="card bp-card mt-3 d-none"><div class="card-body p-4">
+{% if boleta %}<div id="boleta" class="card bp-card mt-3"><div class="card-body p-4">
 <h5>Boleta BeatPay</h5>
-<p class="mb-1">Folio: <b id="b-folio"></b> | Fecha: <b id="b-fecha"></b></p>
-<p class="mb-1">Operación: <b id="b-tipo"></b> | Evento: <b id="b-evento"></b></p>
-<p class="mb-1">Monto: <b id="b-monto"></b></p>
-<p class="mb-1">Saldo anterior: <b id="b-antes"></b> → Nuevo: <b id="b-nuevo"></b></p>
+<p class="mb-1">Folio: <b id="b-folio">{{ boleta.folio }}</b> | Fecha: <b id="b-fecha">{{ boleta.fecha|date:'d/m/Y H:i' }}</b></p>
+<p class="mb-1">Operación: <b id="b-tipo">{{ boleta.tipo }}</b> | Evento: <b id="b-evento">{{ boleta.evento }}</b></p>
+<p class="mb-1">Monto: <b id="b-monto">${{ boleta.monto }}</b></p>
+<p class="mb-1">Saldo anterior: <b id="b-antes">${{ boleta.saldo_antes }}</b> → Nuevo: <b id="b-nuevo">${{ boleta.saldo_nuevo }}</b></p>
 <div class="d-flex flex-wrap gap-2 mt-2"><button class="btn btn-secondary" onclick="window.print()">Imprimir</button><button class="btn btn-outline-secondary" onclick="return descargarBoleta()">Descargar .txt</button></div>
-</div></div></main>
+</div></div>{% endif %}</main>
 <script src="{% static 'core/js/app.js' %}?v=4"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body></html>

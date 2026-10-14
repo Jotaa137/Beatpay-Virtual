@@ -1,4 +1,5 @@
 import json
+import random
 from pathlib import Path
 
 from django.contrib import messages
@@ -11,7 +12,7 @@ from django.db.models import Q
 from django.shortcuts import redirect, render
 
 from .forms import EmisionForm, LoginForm, RegistroForm
-from .models import Auditoria, Cuenta, Tarjeta
+from .models import Auditoria, Cuenta, Tarjeta, Transaccion
 
 # Datos mock en JSON (eventos y transacciones de ejemplo).
 DEMO_PATH = Path(__file__).resolve().parent / 'data' / 'demo.json'
@@ -33,6 +34,16 @@ def _tarjeta(user):
 
 def _log(usuario, accion, detalle=''):
     Auditoria.objects.create(usuario=usuario, accion=accion, detalle=detalle[:255])
+
+
+def _folio():
+    while True:
+        f = f'BP-{random.randint(0, 999999):06d}'
+        if not Transaccion.objects.filter(folio=f).exists():
+            return f
+
+
+
 
 
 def index(request):
@@ -146,23 +157,26 @@ def dashboard(request):
             elif monto > cuenta.saldo:
                 messages.error(request, f'Saldo insuficiente. Tienes ${cuenta.saldo}.')
             else:
+                antes, dest_antes = cuenta.saldo, destino_cuenta.saldo
                 cuenta.saldo -= monto
                 cuenta.save()
                 destino_cuenta.saldo += monto
                 destino_cuenta.save()
+                Transaccion.objects.create(cuenta=cuenta, evento=f'Transferencia a {destino.username}', monto=monto, tipo='PAGO', folio=_folio(), saldo_antes=antes, saldo_nuevo=cuenta.saldo)
+                Transaccion.objects.create(cuenta=destino_cuenta, evento=f'Transferencia de {request.user.username}', monto=monto, tipo='CARGA', folio=_folio(), saldo_antes=dest_antes, saldo_nuevo=destino_cuenta.saldo)
                 _log(request.user.username, 'transferir', f'${monto} a {destino.username}')
                 messages.success(request, f'Transferiste ${monto} a {destino.username}. Nuevo saldo: ${cuenta.saldo}.')
         return redirect('dashboard')
-    tx = _demo()['transacciones']
-    ultimas = list(reversed(tx))[:3]
+    ultimas = cuenta.transacciones.all()[:3]
+    numero = _tarjeta(request.user).numero.replace(' ', '')
     return render(request, 'dashboard.html', {
         'usuario': request.user.first_name or request.user.username,
         'saldo': cuenta.saldo,
         'pto': cuenta.presupuesto,
         'tarjeta': _tarjeta(request.user).estado,
+        'ultimos4': numero[-4:],
         'solicitud': cuenta.solicitud_cupo,
         'ultimas': ultimas,
-        'tx_json': json.dumps(tx),
     })
 
 
@@ -170,9 +184,27 @@ def dashboard(request):
 def cargar(request):
     if request.user.is_staff:
         return redirect('panel')
+    cuenta = _cuenta(request.user)
+    boleta = None
+    if request.method == 'POST':
+        try:
+            monto = int(request.POST.get('monto', ''))
+        except (ValueError, TypeError):
+            monto = 0
+        if monto < 1000:
+            messages.error(request, 'Monto mínimo $1.000.')
+        else:
+            antes = cuenta.saldo
+            cuenta.saldo += monto
+            cuenta.save()
+            boleta = Transaccion.objects.create(cuenta=cuenta, evento='Carga BeatPay', monto=monto, tipo='CARGA', folio=_folio(), saldo_antes=antes, saldo_nuevo=cuenta.saldo)
+            _log(request.user.username, 'cargar', f'${monto}')
+            messages.success(request, f'Carga exitosa. Nuevo saldo: ${cuenta.saldo}.')
     return render(request, 'cargar.html', {
         'monto_min': 1000,
         'monto_default': 50000,
+        'saldo': cuenta.saldo,
+        'boleta': boleta,
     })
 
 
@@ -180,11 +212,36 @@ def cargar(request):
 def pagar(request):
     if request.user.is_staff:
         return redirect('panel')
-    d = _demo()
+    cuenta = _cuenta(request.user)
+    boleta = None
+    if request.method == 'POST':
+        evento = request.POST.get('evento', '').strip()
+        try:
+            monto = int(request.POST.get('monto', ''))
+        except (ValueError, TypeError):
+            monto = 0
+        if _tarjeta(request.user).estado != 'Activa':
+            messages.error(request, 'Tu tarjeta no está activa.')
+        elif monto < 1000:
+            messages.error(request, 'Monto mínimo $1.000.')
+        elif monto > cuenta.saldo:
+            messages.error(request, f'Saldo insuficiente. Tienes ${cuenta.saldo}.')
+        else:
+            if monto > cuenta.presupuesto:
+                messages.info(request, f'Te pasaste del presupuesto (${cuenta.presupuesto}). Igual se pagó.')
+            antes = cuenta.saldo
+            cuenta.saldo -= monto
+            cuenta.save()
+            boleta = Transaccion.objects.create(cuenta=cuenta, evento=evento or 'Pago', monto=monto, tipo='PAGO', folio=_folio(), saldo_antes=antes, saldo_nuevo=cuenta.saldo)
+            _log(request.user.username, 'pagar', f'${monto} en {boleta.evento}')
+            messages.success(request, f'Pago aprobado por ${monto}. Nuevo saldo: ${cuenta.saldo}.')
     return render(request, 'pagar.html', {
         'monto_min': 1000,
         'monto_default': 15000,
-        'eventos': d['eventos'],
+        'eventos': _demo()['eventos'],
+        'saldo': cuenta.saldo,
+        'tarjeta': _tarjeta(request.user).estado,
+        'boleta': boleta,
     })
 
 
@@ -192,17 +249,19 @@ def pagar(request):
 def transacciones(request):
     if request.user.is_staff:
         return redirect('panel')
-    d = _demo()
-    tx = d['transacciones']
-    pagos = [t for t in tx if t['tipo'] == 'PAGO']
-    cargas = [t for t in tx if t['tipo'] != 'PAGO']
-    total_pagos = sum(t['monto'] for t in pagos)
-    total_cargas = sum(t['monto'] for t in cargas)
+    tx = _cuenta(request.user).transacciones.all()
+    f = request.GET.get('filtro', '')
+    q = request.GET.get('q', '').strip().lower()
+    if f in ('PAGO', 'CARGA'):
+        tx = tx.filter(tipo=f)
+    if q:
+        tx = tx.filter(evento__icontains=q)
     return render(request, 'transacciones.html', {
-        'transacciones': list(reversed(tx)),
-        'total_pagos': total_pagos,
-        'total_cargas': total_cargas,
-        'tx_json': json.dumps(tx),
+        'transacciones': tx,
+        'filtro': f,
+        'q': request.GET.get('q', ''),
+        'total_pagos': sum(t.monto for t in tx.filter(tipo='PAGO')),
+        'total_cargas': sum(t.monto for t in tx.filter(tipo='CARGA')),
     })
 
 
@@ -219,6 +278,7 @@ def tarjeta(request):
         return redirect('tarjeta')
     return render(request, 'tarjeta.html', {
         'tarjeta': tobj.estado,
+        'numero': tobj.numero,
         'tipo': tobj.tipo,
     })
 
@@ -234,6 +294,8 @@ def panel(request):
             'username': request.POST.get('username', '').strip().lower(),
             'email': request.POST.get('email', '').strip().lower(),
             'password': request.POST.get('pass', ''),
+            'saldo': request.POST.get('saldo', '').strip() or None,
+            'presupuesto': request.POST.get('pto', '').strip() or None,
         })
         if not form.is_valid():
             for errs in form.errors.values():
@@ -244,14 +306,16 @@ def panel(request):
         else:
             d = form.cleaned_data
             nuevo = User.objects.create_user(username=d['username'], email=d['email'], password=d['password'], first_name=d['nombre'])
-            Tarjeta.objects.create(cuenta=Cuenta.objects.create(user=nuevo))
-            _log(request.user.username, 'emitir', f'tarjeta para {d["username"]}')
-            messages.success(request, f'Tarjeta emitida para {d["username"]}.')
+            cuenta = Cuenta.objects.create(user=nuevo,
+                                           saldo=d['saldo'] or 0,
+                                           presupuesto=d['presupuesto'] if d['presupuesto'] is not None else 100000)
+            Tarjeta.objects.create(cuenta=cuenta)
+            _log(request.user.username, 'emitir', f'tarjeta para {d["username"]} (${cuenta.saldo})')
+            messages.success(request, f'Tarjeta emitida para {d["username"]} con ${cuenta.saldo}.')
     for u in User.objects.all():
         _tarjeta(u)
     clientes = list(User.objects.filter(is_staff=False).select_related('cuenta').order_by('username'))
     cuentas = [u.cuenta for u in clientes]
-    tx = _demo()['transacciones']
     q = request.GET.get('q', '').strip()
     filtro = request.GET.get('filtro', '')
     usuarios = list(clientes)
@@ -273,8 +337,8 @@ def panel(request):
         'saldo_promedio': round(sum(c.saldo for c in cuentas) / max(len(cuentas), 1)),
         'tarjetas_activas': Tarjeta.objects.filter(estado='Activa').count(),
         'tarjetas_bloqueadas': Tarjeta.objects.exclude(estado='Activa').count(),
-        'total_pagos': sum(t['monto'] for t in tx if t['tipo'] == 'PAGO'),
-        'total_cargas': sum(t['monto'] for t in tx if t['tipo'] != 'PAGO'),
+        'total_pagos': sum(t.monto for t in Transaccion.objects.filter(tipo='PAGO')),
+        'total_cargas': sum(t.monto for t in Transaccion.objects.filter(tipo='CARGA')),
     })
 
 

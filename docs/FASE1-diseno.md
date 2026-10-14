@@ -8,7 +8,7 @@ Flujos detallados en `FLUJO-sistema-pago.md` (este doc no los duplica).
 1. Se recortó el caso a lo que toca BeatPay (sin Bodega/Transporte).
 2. Se definió el flujo: landing → registro/login → rol → home usuario / panel admin → cerrar sesión.
 3. Se dibujaron mockups de las pantallas.
-4. Se construyeron navegables con HTML + Bootstrap 5.3 + 1 JS (`localStorage` como apoyo demo).
+4. Se construyeron navegables con HTML + Bootstrap 5.3 + 1 JS de ayudas; lo funcional vive en el servidor.
 5. Se auditó: sin links rotos (todo con `{% url %}`), botones coherentes, responsive.
 
 ## 3. Pantallas (qué hace cada una)
@@ -27,8 +27,8 @@ Flujos detallados en `FLUJO-sistema-pago.md` (este doc no los duplica).
 ## 4. Archivos de soporte (qué hace cada uno)
 | Archivo | Propósito |
 |---|---|
-| `static/css/style.css` | Tema minimalista (solo Bootstrap), responsive, impresión de boleta |
-| `static/js/app.js` | Único JS por secciones: estado `localStorage`, ayuda clave, cargar/pagar, historial, tarjeta, boleta |
+| `core/static/core/css/style.css` | Tema minimalista + oscuro (solo Bootstrap), responsive, impresión de boleta |
+| `core/static/core/js/app.js` | Único JS: ayudas visuales (clave, tema, boleta txt). Todo lo funcional es servidor |
 
 ## 5. Reglas UI (resumen)
 Navbar único (logo + botones derecha), cards blancas `bp-card`, 1 CSS + 1 JS, links con `{% url %}`, `{% static %}` para estáticos, modo oscuro/claro con memoria (botón 🌙).
