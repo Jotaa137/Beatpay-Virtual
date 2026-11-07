@@ -11,8 +11,11 @@
 <div class="col-12 col-lg-5">
 <h5 class="mt-1">Cuenta y tarjeta</h5>
 <div class="card bp-card mb-3"><div class="card-body">
-<div class="bp-stat"><span class="bp-muted">Nombre</span><span><b>{{ target.first_name|default:'—' }}</b></span></div>
-<div class="bp-stat"><span class="bp-muted">Email</span><span>{{ target.email|default:'—' }}</span></div>
+<div class="bp-stat"><span class="bp-muted">Nombre</span><span><b>{{ cliente.nombre }} {{ cliente.apellido }}</b></span></div>
+<div class="bp-stat"><span class="bp-muted">RUT</span><span>{{ cliente.rut|default:'—' }}</span></div>
+<div class="bp-stat"><span class="bp-muted">Email</span><span>{{ cliente.email|default:'—' }}</span></div>
+<div class="bp-stat"><span class="bp-muted">Teléfono</span><span>{{ cliente.telefono|default:'—' }}</span></div>
+<div class="bp-stat"><span class="bp-muted">Dirección</span><span>{{ cliente.direccion|default:'—' }}</span></div>
 <div class="bp-stat"><span class="bp-muted">Saldo</span><span class="num-big">${{ tarjeta.saldo }}</span></div>
 <div class="bp-stat"><span class="bp-muted">Presupuesto</span><span class="num-big">${{ cuenta.presupuesto }}</span></div>
 <div class="bp-stat"><span class="bp-muted">Tarjeta {{ tarjeta.tipo }} {{ tarjeta.numero }}</span><span class="badge {% if tarjeta.estado == 'Activa' %}text-bg-success{% else %}text-bg-danger{% endif %}">{{ tarjeta.estado }}</span></div>
@@ -33,6 +36,18 @@
 </div></div>
 </div>
 <div class="col-12 col-lg-7">
+<h5 class="mt-1">Datos del cliente</h5>
+<div class="card bp-card mb-3"><div class="card-body">
+<form method="post" class="row g-2">{% csrf_token %}<input type="hidden" name="action" value="editar_cliente">
+<div class="col-6"><label class="form-label">Nombre</label><input name="nombre" class="form-control bp-input" required minlength="2" maxlength="80" value="{{ cliente.nombre }}"></div>
+<div class="col-6"><label class="form-label">Apellido</label><input name="apellido" class="form-control bp-input" maxlength="80" value="{{ cliente.apellido }}"></div>
+<div class="col-6"><label class="form-label">RUT</label><input name="rut" class="form-control bp-input" maxlength="12" value="{{ cliente.rut|default_if_none:'' }}" placeholder="12.345.678-9"></div>
+<div class="col-6"><label class="form-label">Teléfono</label><input name="telefono" class="form-control bp-input" maxlength="20" value="{{ cliente.telefono }}"></div>
+<div class="col-12"><label class="form-label">Email</label><input name="email" type="email" class="form-control bp-input" value="{{ cliente.email }}"></div>
+<div class="col-12"><label class="form-label">Dirección</label><input name="direccion" class="form-control bp-input" maxlength="200" value="{{ cliente.direccion }}"></div>
+<div class="col-12"><button class="btn btn-beatpay btn-sm" type="submit">Guardar datos</button></div>
+</form>
+</div></div>
 <h5 class="mt-1">Auditoría de {{ target.username }}</h5>
 <div class="card bp-card mb-3"><div class="card-body">
 {% for a in historial %}<p class="mb-1" style="font-size:.85rem"><span class="bp-muted">{{ a.fecha|date:'d/m H:i' }}</span> <b>{{ a.usuario }}</b> {{ a.accion }} <span class="bp-muted">{{ a.detalle }}</span></p>{% empty %}<p class="bp-muted mb-0">Sin movimientos aún.</p>{% endfor %}

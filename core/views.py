@@ -6,11 +6,11 @@ from django.contrib import messages
 from django.contrib.auth import authenticate
 from django.contrib.auth import login as auth_login
 from django.contrib.auth import logout as auth_logout
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.db.models import Q
+from django.db.models import ProtectedError, Q
 from django.shortcuts import redirect, render
 
 from .models import (
@@ -397,11 +397,14 @@ def tarjeta(request):
     })
 
 
+def es_staff(user):
+    """Permite el acceso solo a usuarios con permisos de administración."""
+    return user.is_staff
+
+
 @login_required
+@user_passes_test(es_staff, login_url='dashboard')
 def panel(request):
-    if not request.user.is_staff:
-        messages.error(request, 'No tienes permiso para ver el panel.')
-        return redirect('dashboard')
     if request.method == 'POST' and request.POST.get('action') == 'emitir':
         datos = {
             'nombre': request.POST.get('nombre', '').strip(),
@@ -445,7 +448,7 @@ def panel(request):
             _instrumento_interno(tarjeta)
             _log(request.user.username, 'emitir', f'tarjeta para {datos["username"]} (${tarjeta.saldo})')
             messages.success(request, f'Tarjeta emitida para {datos["username"]} con ${tarjeta.saldo}.')
-    for u in User.objects.all():
+    for u in User.objects.filter(is_staff=False):
         _tarjeta(u)
     clientes = list(User.objects.filter(is_staff=False).order_by('username'))
     cuentas = [_cuenta(u) for u in clientes]
@@ -480,10 +483,8 @@ def panel(request):
 
 
 @login_required
+@user_passes_test(es_staff, login_url='dashboard')
 def usuario_detalle(request, user_id):
-    if not request.user.is_staff:
-        messages.error(request, 'No tienes permiso para ver el panel.')
-        return redirect('dashboard')
     try:
         target = User.objects.get(pk=user_id)
     except (User.DoesNotExist, ValueError, TypeError):
@@ -491,6 +492,7 @@ def usuario_detalle(request, user_id):
         return redirect('panel')
     tcuenta = _cuenta(target)
     ttarjeta = _tarjeta(target)
+    tcliente = _cliente(target)
     if request.method == 'POST':
         action = request.POST.get('action')
         if action == 'toggle_tarjeta':
@@ -530,18 +532,67 @@ def usuario_detalle(request, user_id):
             tcuenta.save()
             _log(request.user.username, 'cupo', f'{target.username} rechazado')
             messages.success(request, f'Solicitud de {target.username} rechazada.')
+        elif action == 'editar_cliente':
+            nombre = request.POST.get('nombre', '').strip()
+            apellido = request.POST.get('apellido', '').strip()
+            rut = request.POST.get('rut', '').strip().upper() or None
+            email = request.POST.get('email', '').strip().lower()
+            telefono = request.POST.get('telefono', '').strip()
+            direccion = request.POST.get('direccion', '').strip()
+            errores = []
+            if len(nombre) < 2 or len(nombre) > 80:
+                errores.append('El nombre debe tener entre 2 y 80 caracteres.')
+            if len(apellido) > 80:
+                errores.append('El apellido no puede superar los 80 caracteres.')
+            if email:
+                error = _validar_email(email)
+                if error:
+                    errores.append(error)
+            if len(telefono) > 20:
+                errores.append('El teléfono no puede superar los 20 caracteres.')
+            if len(direccion) > 200:
+                errores.append('La dirección no puede superar los 200 caracteres.')
+            if rut:
+                if len(rut) > 12:
+                    errores.append('El RUT no puede superar los 12 caracteres.')
+                elif Cliente.objects.filter(rut=rut).exclude(pk=tcliente.pk).exists():
+                    errores.append('Ese RUT ya está registrado.')
+            if errores:
+                for e in errores:
+                    messages.error(request, e)
+            else:
+                tcliente.nombre = nombre
+                tcliente.apellido = apellido
+                tcliente.rut = rut
+                tcliente.email = email
+                tcliente.telefono = telefono
+                tcliente.direccion = direccion
+                tcliente.save()
+                target.first_name = nombre
+                target.last_name = apellido
+                target.email = email
+                target.save(update_fields=['first_name', 'last_name', 'email'])
+                _log(request.user.username, 'cliente', f'{target.username}: datos actualizados')
+                messages.success(request, f'Datos de {target.username} actualizados.')
         elif action == 'eliminar':
             if target == request.user:
                 messages.error(request, 'No puedes eliminarte a ti mismo.')
             else:
                 _log(request.user.username, 'eliminar', f'usuario {target.username}')
-                target.delete()
+                try:
+                    target.delete()
+                except ProtectedError:
+                    target.is_active = False
+                    target.save(update_fields=['is_active'])
+                    messages.warning(request, f'{target.username} tiene movimientos registrados; se desactivó en vez de eliminarse.')
+                    return redirect('usuario_detalle', user_id=target.id)
                 messages.success(request, f'Usuario {target.username} eliminado.')
                 return redirect('panel')
         return redirect('usuario_detalle', user_id=target.id)
     historial = Auditoria.objects.filter(Q(usuario=target.username) | Q(detalle__icontains=target.username)).order_by('-fecha')[:10]
     return render(request, 'usuario.html', {
         'target': target,
+        'cliente': tcliente,
         'cuenta': tcuenta,
         'tarjeta': ttarjeta,
         'historial': historial,
