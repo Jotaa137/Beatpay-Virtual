@@ -10,9 +10,10 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.db.models import Count, ProtectedError, Q
+from django.db.models import Count, ProtectedError, Q, Sum
 from django.db import transaction
 from django.shortcuts import redirect, render
+from django.utils import timezone
 
 from .models import (
     Auditoria,
@@ -1376,3 +1377,92 @@ def movimiento_estado(request, movimiento_id):
         _log(request.user.username, 'movimiento', f'{movimiento.id}: {nuevo_estado}')
         messages.success(request, f'Movimiento #{movimiento.id}: {nuevo_estado}.')
     return redirect('panel_movimientos')
+
+
+# =====================================================================
+# Dashboard de administración (panel propio)
+# =====================================================================
+
+@login_required
+@user_passes_test(es_staff, login_url='dashboard')
+def panel_dashboard(request):
+    """Dashboard del administrador con estadísticas, gráficos y últimos movimientos."""
+    # Período para filtrar estadísticas (por defecto: últimos 30 días)
+    periodo = request.GET.get('periodo', '30').strip()
+    try:
+        dias = int(periodo)
+    except (ValueError, TypeError):
+        dias = 30
+
+    fecha_limite = timezone.now() - timezone.timedelta(days=dias)
+
+    # ---------- Tarjetas de estadísticas ----------
+    clientes_count = Cliente.objects.count()
+    tarjetas_count = Tarjeta.objects.count()
+    movimientos_count = Movimiento.objects.count()
+
+    monto_total = Movimiento.objects.filter(
+        estado='Completado'
+    ).aggregate(total=Sum('monto'))['total'] or 0
+
+    # ---------- Últimos movimientos ----------
+    ultimos_movimientos = Movimiento.objects.select_related(
+        'origen__banco', 'origen__tarjeta',
+        'destino__banco', 'destino__tarjeta',
+    ).order_by('-fecha')[:5]
+
+    # ---------- Gráfico: movimientos por estado ----------
+    por_estado = list(
+        Movimiento.objects.values('estado')
+        .annotate(cantidad=Count('id'))
+        .order_by('estado')
+    )
+    estados_labels = [e['estado'] for e in por_estado]
+    estados_data = [e['cantidad'] for e in por_estado]
+
+    # ---------- Gráfico: movimientos por tipo (interno/externo) ----------
+    por_tipo = list(
+        Movimiento.objects.values('origen__banco__es_interno')
+        .annotate(cantidad=Count('id'))
+        .order_by('origen__banco__es_interno')
+    )
+    tipo_labels = []
+    tipo_data = []
+    for item in por_tipo:
+        es_interno = item['origen__banco__es_interno']
+        tipo_labels.append('Interno' if es_interno else 'Externo')
+        tipo_data.append(item['cantidad'])
+
+    # ---------- Gráfico: evolución mensual (últimos 6 meses) ----------
+    evolucion_labels = []
+    evolucion_data = []
+    for i in range(5, -1, -1):
+        mes_fecha = timezone.now() - timezone.timedelta(days=30 * i)
+        mes_nombre = mes_fecha.strftime('%b %Y')
+        mes_inicio = mes_fecha.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if i == 0:
+            mes_fin = timezone.now()
+        else:
+            mes_anterior = timezone.now() - timezone.timedelta(days=30 * (i - 1))
+            mes_fin = mes_anterior.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        cantidad = Movimiento.objects.filter(
+            fecha__gte=mes_inicio,
+            fecha__lt=mes_fin,
+        ).count()
+        evolucion_labels.append(mes_nombre)
+        evolucion_data.append(cantidad)
+
+    return render(request, 'panel_dashboard.html', {
+        'clientes_count': clientes_count,
+        'tarjetas_count': tarjetas_count,
+        'movimientos_count': movimientos_count,
+        'monto_total': monto_total,
+        'periodo': dias,
+        'ultimos_movimientos': ultimos_movimientos,
+        'estados_labels': estados_labels,
+        'estados_data': estados_data,
+        'tipo_labels': tipo_labels,
+        'tipo_data': tipo_data,
+        'evolucion_labels': evolucion_labels,
+        'evolucion_data': evolucion_data,
+    })
