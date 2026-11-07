@@ -19,6 +19,7 @@ from .models import (
     Cliente,
     Cuenta,
     InstrumentoFinanciero,
+    Movimiento,
     Tarjeta,
     Transaccion,
 )
@@ -514,11 +515,26 @@ def panel(request):
                 password=datos['password'],
                 first_name=datos['nombre'],
             )
-            cliente = Cliente.objects.create(
-                user=nuevo,
-                nombre=datos['nombre'],
-                email=datos['email'],
-            )
+            cliente_id = _entero(request.POST.get('cliente_id', '').strip(), None)
+            if cliente_id is not None:
+                try:
+                    cliente = Cliente.objects.get(pk=cliente_id, user__isnull=True)
+                    cliente.user = nuevo
+                    cliente.nombre = datos['nombre']
+                    cliente.email = datos['email']
+                    cliente.save(update_fields=['user', 'nombre', 'email'])
+                except Cliente.DoesNotExist:
+                    cliente = Cliente.objects.create(
+                        user=nuevo,
+                        nombre=datos['nombre'],
+                        email=datos['email'],
+                    )
+            else:
+                cliente = Cliente.objects.create(
+                    user=nuevo,
+                    nombre=datos['nombre'],
+                    email=datos['email'],
+                )
             Cuenta.objects.create(user=nuevo, presupuesto=pto)
             tarjeta = Tarjeta.objects.create(
                 cliente=cliente,
@@ -547,6 +563,7 @@ def panel(request):
     saldo_total = sum(u.tarjeta_obj.saldo for u in clientes)
     return render(request, 'admin.html', {
         'usuarios': usuarios,
+        'clientes_sin_user': Cliente.objects.filter(user__isnull=True).order_by('apellido', 'nombre'),
         'solicitudes': [u for u, c in zip(clientes, cuentas) if c.solicitud_cupo],
         'q': q,
         'filtro': filtro,
@@ -646,6 +663,327 @@ def usuario_detalle(request, user_id):
         'tarjeta': ttarjeta,
         'historial': historial,
     })
+
+
+# =====================================================================
+# CRUD de Tarjetas (panel propio)
+# =====================================================================
+
+@login_required
+@user_passes_test(es_staff, login_url='dashboard')
+def panel_tarjetas(request):
+    q = request.GET.get('q', '').strip()
+    estado = request.GET.get('estado', '')
+    banco_id = _entero(request.GET.get('banco', '').strip(), None)
+    tarjetas = Tarjeta.objects.select_related('cliente', 'banco').prefetch_related('instrumento')
+    if q:
+        tarjetas = tarjetas.filter(
+            Q(numero__icontains=q)
+            | Q(cliente__nombre__icontains=q)
+            | Q(cliente__apellido__icontains=q)
+            | Q(cliente__rut__icontains=q)
+            | Q(banco__nombre__icontains=q)
+        )
+    if estado:
+        tarjetas = tarjetas.filter(estado=estado)
+    if banco_id is not None:
+        tarjetas = tarjetas.filter(banco_id=banco_id)
+    return render(request, 'panel_tarjetas.html', {
+        'tarjetas': tarjetas,
+        'q': q,
+        'estado': estado,
+        'banco': banco_id,
+        'bancos': Banco.objects.all(),
+        'estados': Tarjeta.ESTADOS,
+        'total': tarjetas.count(),
+    })
+
+
+@login_required
+@user_passes_test(es_staff, login_url='dashboard')
+def tarjeta_form(request, tarjeta_id=None):
+    tarjeta = None
+    if tarjeta_id is not None:
+        try:
+            tarjeta = Tarjeta.objects.select_related('cliente', 'banco').get(pk=tarjeta_id)
+        except Tarjeta.DoesNotExist:
+            messages.error(request, 'Tarjeta no encontrada.')
+            return redirect('panel_tarjetas')
+
+    if request.method == 'POST':
+        cliente_id = _entero(request.POST.get('cliente', '').strip(), None)
+        banco_id = _entero(request.POST.get('banco', '').strip(), None)
+        tipo = request.POST.get('tipo', '').strip()
+        estado = request.POST.get('estado', '').strip()
+        saldo = _entero(request.POST.get('saldo', '0').strip(), 0)
+        fecha_venc = request.POST.get('fecha_vencimiento', '').strip() or None
+
+        errores = []
+        if cliente_id is None:
+            errores.append('Debe seleccionar un cliente.')
+        else:
+            try:
+                Cliente.objects.get(pk=cliente_id)
+            except Cliente.DoesNotExist:
+                errores.append('El cliente seleccionado no existe.')
+        if banco_id is None:
+            errores.append('Debe seleccionar un banco.')
+        else:
+            try:
+                Banco.objects.get(pk=banco_id)
+            except Banco.DoesNotExist:
+                errores.append('El banco seleccionado no existe.')
+        tipos_validos = [t[0] for t in Tarjeta.TIPOS]
+        if tipo not in tipos_validos:
+            errores.append('Tipo de tarjeta inválido.')
+        estados_validos = [e[0] for e in Tarjeta.ESTADOS]
+        if estado not in estados_validos:
+            errores.append('Estado inválido.')
+        if saldo is None or saldo < 0:
+            errores.append('El saldo debe ser un entero mayor o igual a 0.')
+
+        if errores:
+            for e in errores:
+                messages.error(request, e)
+            valores = {
+                'cliente': cliente_id or '',
+                'banco': banco_id or '',
+                'tipo': tipo,
+                'estado': estado,
+                'saldo': saldo if saldo is not None else '',
+                'fecha_vencimiento': fecha_venc or '',
+            }
+        else:
+            if tarjeta is None:
+                cliente = Cliente.objects.get(pk=cliente_id)
+                banco = Banco.objects.get(pk=banco_id)
+                tarjeta = Tarjeta.objects.create(
+                    cliente=cliente,
+                    banco=banco,
+                    tipo=tipo,
+                    estado=estado,
+                    saldo=saldo,
+                    fecha_vencimiento=fecha_venc,
+                )
+                _instrumento_interno(tarjeta)
+                _log(request.user.username, 'tarjeta', f'creada: {tarjeta.numero}')
+                messages.success(request, f'Tarjeta {tarjeta.numero} creada.')
+            else:
+                tarjeta.cliente_id = cliente_id
+                tarjeta.banco_id = banco_id
+                tarjeta.tipo = tipo
+                tarjeta.estado = estado
+                tarjeta.saldo = saldo
+                tarjeta.fecha_vencimiento = fecha_venc
+                tarjeta.save()
+                _log(request.user.username, 'tarjeta', f'actualizada: {tarjeta.numero}')
+                messages.success(request, f'Tarjeta {tarjeta.numero} actualizada.')
+            return redirect('panel_tarjetas')
+    elif tarjeta is None:
+        valores = {
+            'cliente': '',
+            'banco': '',
+            'tipo': 'Visa',
+            'estado': 'Activa',
+            'saldo': '',
+            'fecha_vencimiento': '',
+        }
+    else:
+        valores = {
+            'cliente': tarjeta.cliente_id,
+            'banco': tarjeta.banco_id,
+            'tipo': tarjeta.tipo,
+            'estado': tarjeta.estado,
+            'saldo': tarjeta.saldo,
+            'fecha_vencimiento': tarjeta.fecha_vencimiento.strftime('%Y-%m-%d') if tarjeta.fecha_vencimiento else '',
+        }
+
+    return render(request, 'tarjeta_form.html', {
+        'tarjeta': tarjeta,
+        'valores': valores,
+        'modo': 'Editar' if tarjeta else 'Nuevo',
+        'clientes': Cliente.objects.all(),
+        'bancos': Banco.objects.all(),
+        'tipos': Tarjeta.TIPOS,
+        'estados': Tarjeta.ESTADOS,
+    })
+
+
+@login_required
+@user_passes_test(es_staff, login_url='dashboard')
+def tarjeta_estado(request, tarjeta_id):
+    if request.method != 'POST':
+        return redirect('panel_tarjetas')
+    try:
+        tarjeta = Tarjeta.objects.get(pk=tarjeta_id)
+    except Tarjeta.DoesNotExist:
+        messages.error(request, 'Tarjeta no encontrada.')
+        return redirect('panel_tarjetas')
+    instrumento = getattr(tarjeta, 'instrumento', None)
+    if instrumento and (instrumento.movimientos_enviados.exists() or instrumento.movimientos_recibidos.exists()):
+        messages.error(request, f'La tarjeta {tarjeta.numero} tiene movimientos registrados; no se puede cambiar su estado.')
+    else:
+        tarjeta.estado = 'Inactiva' if tarjeta.estado == 'Activa' else 'Activa'
+        tarjeta.save(update_fields=['estado'])
+        _log(request.user.username, 'tarjeta', f'{tarjeta.numero}: {tarjeta.estado}')
+        messages.success(request, f'Tarjeta {tarjeta.numero}: {tarjeta.estado}.')
+    return redirect('panel_tarjetas')
+
+
+# =====================================================================
+# CRUD de Instrumentos Financieros (panel propio)
+# =====================================================================
+
+@login_required
+@user_passes_test(es_staff, login_url='dashboard')
+def panel_instrumentos(request):
+    q = request.GET.get('q', '').strip()
+    tipo = request.GET.get('tipo', '')
+    instrumentos = InstrumentoFinanciero.objects.select_related('banco', 'tarjeta')
+    if q:
+        instrumentos = instrumentos.filter(
+            Q(titular__icontains=q)
+            | Q(alias__icontains=q)
+            | Q(banco__nombre__icontains=q)
+        )
+    if tipo in ('INTERNO', 'EXTERNO'):
+        instrumentos = instrumentos.filter(tipo=tipo)
+    return render(request, 'panel_instrumentos.html', {
+        'instrumentos': instrumentos,
+        'q': q,
+        'tipo': tipo,
+        'tipos': InstrumentoFinanciero.TIPOS,
+        'total': instrumentos.count(),
+    })
+
+
+@login_required
+@user_passes_test(es_staff, login_url='dashboard')
+def instrumento_form(request, instrumento_id=None):
+    instrumento = None
+    if instrumento_id is not None:
+        try:
+            instrumento = InstrumentoFinanciero.objects.select_related('banco', 'tarjeta').get(pk=instrumento_id)
+        except InstrumentoFinanciero.DoesNotExist:
+            messages.error(request, 'Instrumento no encontrado.')
+            return redirect('panel_instrumentos')
+
+    if request.method == 'POST':
+        tipo = request.POST.get('tipo', '').strip()
+        banco_id = _entero(request.POST.get('banco', '').strip(), None)
+        tarjeta_id = _entero(request.POST.get('tarjeta', '').strip(), None)
+        titular = request.POST.get('titular', '').strip()
+        alias = request.POST.get('alias', '').strip()
+        activo = request.POST.get('activo') == 'on'
+
+        errores = []
+        tipos_validos = [t[0] for t in InstrumentoFinanciero.TIPOS]
+        if tipo not in tipos_validos:
+            errores.append('Tipo inválido.')
+        if banco_id is None:
+            errores.append('Debe seleccionar un banco.')
+        else:
+            try:
+                Banco.objects.get(pk=banco_id)
+            except Banco.DoesNotExist:
+                errores.append('El banco seleccionado no existe.')
+        if tipo == 'INTERNO':
+            if tarjeta_id is None:
+                errores.append('Para un instrumento interno debe seleccionar una tarjeta.')
+            else:
+                try:
+                    t = Tarjeta.objects.get(pk=tarjeta_id)
+                    if hasattr(t, 'instrumento') and t.instrumento_id != (instrumento.pk if instrumento else None):
+                        errores.append('Esa tarjeta ya tiene un instrumento asignado.')
+                except Tarjeta.DoesNotExist:
+                    errores.append('La tarjeta seleccionada no existe.')
+        if tipo == 'EXTERNO' and not titular:
+            errores.append('El titular es obligatorio para instrumentos externos.')
+
+        if errores:
+            for e in errores:
+                messages.error(request, e)
+            valores = {
+                'tipo': tipo,
+                'banco': banco_id or '',
+                'tarjeta': tarjeta_id or '',
+                'titular': titular,
+                'alias': alias,
+                'activo': activo,
+            }
+        else:
+            if instrumento is None:
+                banco = Banco.objects.get(pk=banco_id)
+                tarjeta = Tarjeta.objects.get(pk=tarjeta_id) if tarjeta_id else None
+                defaults = {
+                    'banco': banco,
+                    'titular': titular or (str(tarjeta.cliente)[:120] if tarjeta else ''),
+                    'alias': alias or (f'Tarjeta {tarjeta.numero[-4:]}' if tarjeta else ''),
+                    'activo': activo,
+                }
+                if tipo == 'INTERNO':
+                    defaults['tarjeta'] = tarjeta
+                instrumento = InstrumentoFinanciero.objects.create(tipo=tipo, **defaults)
+                _log(request.user.username, 'instrumento', f'creado: {instrumento.uuid}')
+                messages.success(request, f'Instrumento {instrumento.alias or instrumento.uuid} creado.')
+            else:
+                instrumento.tipo = tipo
+                instrumento.banco_id = banco_id
+                instrumento.tarjeta_id = tarjeta_id if tipo == 'INTERNO' else None
+                instrumento.titular = titular
+                instrumento.alias = alias
+                instrumento.activo = activo
+                instrumento.save()
+                _log(request.user.username, 'instrumento', f'actualizado: {instrumento.uuid}')
+                messages.success(request, f'Instrumento {instrumento.alias or instrumento.uuid} actualizado.')
+            return redirect('panel_instrumentos')
+    elif instrumento is None:
+        valores = {
+            'tipo': 'INTERNO',
+            'banco': '',
+            'tarjeta': '',
+            'titular': '',
+            'alias': '',
+            'activo': True,
+        }
+    else:
+        valores = {
+            'tipo': instrumento.tipo,
+            'banco': instrumento.banco_id,
+            'tarjeta': instrumento.tarjeta_id,
+            'titular': instrumento.titular,
+            'alias': instrumento.alias,
+            'activo': instrumento.activo,
+        }
+
+    return render(request, 'instrumento_form.html', {
+        'instrumento': instrumento,
+        'valores': valores,
+        'modo': 'Editar' if instrumento else 'Nuevo',
+        'bancos': Banco.objects.all(),
+        'tarjetas': Tarjeta.objects.all(),
+        'tipos': InstrumentoFinanciero.TIPOS,
+    })
+
+
+@login_required
+@user_passes_test(es_staff, login_url='dashboard')
+def instrumento_estado(request, instrumento_id):
+    if request.method != 'POST':
+        return redirect('panel_instrumentos')
+    try:
+        instrumento = InstrumentoFinanciero.objects.get(pk=instrumento_id)
+    except InstrumentoFinanciero.DoesNotExist:
+        messages.error(request, 'Instrumento no encontrado.')
+        return redirect('panel_instrumentos')
+    if instrumento.movimientos_enviados.exists() or instrumento.movimientos_recibidos.exists():
+        messages.error(request, f'El instrumento {instrumento.alias or instrumento.uuid} tiene movimientos registrados; no se puede desactivar.')
+    else:
+        instrumento.activo = not instrumento.activo
+        instrumento.save(update_fields=['activo'])
+        _log(request.user.username, 'instrumento', f'{instrumento.uuid}: {"activo" if instrumento.activo else "inactivo"}')
+        messages.success(request, f'Instrumento {instrumento.alias or instrumento.uuid}: {"activado" if instrumento.activo else "desactivado"}.')
+    return redirect('panel_instrumentos')
 
 
 @login_required
