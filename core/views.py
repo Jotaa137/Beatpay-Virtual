@@ -11,6 +11,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db.models import Count, ProtectedError, Q
+from django.db import transaction
 from django.shortcuts import redirect, render
 
 from .models import (
@@ -1183,3 +1184,195 @@ def banco_estado(request, banco_id):
         _log(request.user.username, 'banco', f'{banco.codigo}: {"activo" if banco.activo else "inactivo"}')
         messages.success(request, f'Banco {banco.nombre} {"activado" if banco.activo else "desactivado"}.')
     return redirect('panel_bancos')
+
+
+def _aplicar_movimiento(movimiento):
+    """Debita saldo del origen y acredita al destino si ambos tienen tarjeta."""
+    origen = movimiento.origen
+    destino = movimiento.destino
+    if origen.tarjeta and destino.tarjeta:
+        origen.tarjeta.saldo -= movimiento.monto
+        origen.tarjeta.save(update_fields=['saldo'])
+        destino.tarjeta.saldo += movimiento.monto
+        destino.tarjeta.save(update_fields=['saldo'])
+
+
+# =====================================================================
+# CRUD de Movimientos (panel propio)
+# =====================================================================
+
+@login_required
+@user_passes_test(es_staff, login_url='dashboard')
+def panel_movimientos(request):
+    q = request.GET.get('q', '').strip()
+    estado = request.GET.get('estado', '')
+    movimientos = Movimiento.objects.select_related(
+        'origen__banco', 'origen__tarjeta',
+        'destino__banco', 'destino__tarjeta',
+    ).order_by('-fecha')
+    if q:
+        movimientos = movimientos.filter(
+            Q(descripcion__icontains=q)
+            | Q(origen__alias__icontains=q)
+            | Q(destino__alias__icontains=q)
+            | Q(origen__titular__icontains=q)
+            | Q(destino__titular__icontains=q)
+            | Q(origen__tarjeta__numero__icontains=q)
+            | Q(destino__tarjeta__numero__icontains=q)
+        )
+    if estado:
+        movimientos = movimientos.filter(estado=estado)
+    return render(request, 'panel_movimientos.html', {
+        'movimientos': movimientos,
+        'q': q,
+        'estado': estado,
+        'estados': Movimiento.ESTADOS,
+        'total': movimientos.count(),
+    })
+
+
+@login_required
+@user_passes_test(es_staff, login_url='dashboard')
+def movimiento_form(request, movimiento_id=None):
+    movimiento = None
+    if movimiento_id is not None:
+        try:
+            movimiento = Movimiento.objects.select_related('origen', 'destino').get(pk=movimiento_id)
+        except Movimiento.DoesNotExist:
+            messages.error(request, 'Movimiento no encontrado.')
+            return redirect('panel_movimientos')
+
+    if request.method == 'POST':
+        origen_id = _entero(request.POST.get('origen', '').strip(), None)
+        destino_id = _entero(request.POST.get('destino', '').strip(), None)
+        monto = _entero(request.POST.get('monto', '0').strip(), 0)
+        estado = request.POST.get('estado', '').strip()
+        descripcion = request.POST.get('descripcion', '').strip()
+
+        errores = []
+        origen = None
+        destino = None
+        if origen_id is None:
+            errores.append('Debe seleccionar un instrumento de origen.')
+        else:
+            try:
+                origen = InstrumentoFinanciero.objects.get(pk=origen_id)
+                if not origen.activo:
+                    errores.append('El instrumento de origen no está activo.')
+            except InstrumentoFinanciero.DoesNotExist:
+                errores.append('El instrumento de origen no existe.')
+        if destino_id is None:
+            errores.append('Debe seleccionar un instrumento de destino.')
+        else:
+            try:
+                destino = InstrumentoFinanciero.objects.get(pk=destino_id)
+                if not destino.activo:
+                    errores.append('El instrumento de destino no está activo.')
+            except InstrumentoFinanciero.DoesNotExist:
+                errores.append('El instrumento de destino no existe.')
+        if origen_id is not None and destino_id is not None and origen_id == destino_id:
+            errores.append('Origen y destino deben ser distintos.')
+        estados_validos = [e[0] for e in Movimiento.ESTADOS]
+        if estado not in estados_validos:
+            errores.append('Estado inválido.')
+        if monto is None or monto <= 0:
+            errores.append('El monto debe ser mayor a 0.')
+        if estado == 'Completado' and origen and destino and monto > 0:
+            if origen.tarjeta and origen.tarjeta.saldo < monto:
+                errores.append(f'Saldo insuficiente en el origen. Saldo disponible: ${origen.tarjeta.saldo}.')
+
+        if errores:
+            for e in errores:
+                messages.error(request, e)
+            valores = {
+                'origen': origen_id or '',
+                'destino': destino_id or '',
+                'monto': monto,
+                'estado': estado,
+                'descripcion': descripcion,
+            }
+        else:
+            if movimiento is None:
+                with transaction.atomic():
+                    movimiento = Movimiento.objects.create(
+                        origen=origen, destino=destino, monto=monto,
+                        estado=estado, descripcion=descripcion,
+                    )
+                    if estado == 'Completado':
+                        _aplicar_movimiento(movimiento)
+                _log(request.user.username, 'movimiento', f'creado: {movimiento.id}')
+                messages.success(request, f'Movimiento #{movimiento.id} creado.')
+            else:
+                if movimiento.estado == 'Completado':
+                    messages.error(request, 'No se puede editar un movimiento completado.')
+                else:
+                    with transaction.atomic():
+                        movimiento.origen = origen
+                        movimiento.destino = destino
+                        movimiento.monto = monto
+                        movimiento.estado = estado
+                        movimiento.descripcion = descripcion
+                        movimiento.save()
+                        if estado == 'Completado':
+                            _aplicar_movimiento(movimiento)
+                    _log(request.user.username, 'movimiento', f'actualizado: {movimiento.id}')
+                    messages.success(request, f'Movimiento #{movimiento.id} actualizado.')
+            return redirect('panel_movimientos')
+    elif movimiento is None:
+        valores = {
+            'origen': '',
+            'destino': '',
+            'monto': '',
+            'estado': 'Pendiente',
+            'descripcion': '',
+        }
+    else:
+        valores = {
+            'origen': movimiento.origen_id,
+            'destino': movimiento.destino_id,
+            'monto': movimiento.monto,
+            'estado': movimiento.estado,
+            'descripcion': movimiento.descripcion,
+        }
+
+    return render(request, 'movimiento_form.html', {
+        'movimiento': movimiento,
+        'valores': valores,
+        'modo': 'Editar' if movimiento else 'Nuevo',
+        'instrumentos': InstrumentoFinanciero.objects.filter(activo=True).select_related('banco', 'tarjeta'),
+        'estados': Movimiento.ESTADOS,
+    })
+
+
+@login_required
+@user_passes_test(es_staff, login_url='dashboard')
+def movimiento_estado(request, movimiento_id):
+    if request.method != 'POST':
+        return redirect('panel_movimientos')
+    try:
+        movimiento = Movimiento.objects.get(pk=movimiento_id)
+    except Movimiento.DoesNotExist:
+        messages.error(request, 'Movimiento no encontrado.')
+        return redirect('panel_movimientos')
+
+    nuevo_estado = request.POST.get('estado', '').strip()
+    estados_validos = [e[0] for e in Movimiento.ESTADOS]
+    if nuevo_estado not in estados_validos:
+        messages.error(request, 'Estado inválido.')
+    else:
+        con_transaccion = nuevo_estado == 'Completado' and movimiento.estado != 'Completado'
+        if con_transaccion:
+            if movimiento.origen.tarjeta and movimiento.origen.tarjeta.saldo < movimiento.monto:
+                messages.error(
+                    request,
+                    f'Saldo insuficiente en el origen. Saldo disponible: ${movimiento.origen.tarjeta.saldo}.'
+                )
+                return redirect('panel_movimientos')
+        with transaction.atomic():
+            movimiento.estado = nuevo_estado
+            movimiento.save(update_fields=['estado'])
+            if con_transaccion:
+                _aplicar_movimiento(movimiento)
+        _log(request.user.username, 'movimiento', f'{movimiento.id}: {nuevo_estado}')
+        messages.success(request, f'Movimiento #{movimiento.id}: {nuevo_estado}.')
+    return redirect('panel_movimientos')

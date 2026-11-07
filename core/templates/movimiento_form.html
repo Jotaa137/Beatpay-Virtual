@@ -1,0 +1,30 @@
+{% load static %}<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ modo }} movimiento - BeatPay</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'core/css/style.css' %}?v=6"></head>
+<body class="d-flex flex-column min-vh-100">
+<nav class="navbar"><div class="container-fluid px-4" style="display:flex;align-items:center;gap:10px"><a class="navbar-brand logo" href="{% url 'index' %}">BEATPAY <span>VIRTUAL</span></a><div class="d-flex gap-2 align-items-center" style="margin-left:auto"><a class="btn btn-secondary btn-sm" href="{% url 'panel' %}">Panel</a><a class="btn btn-outline-secondary btn-sm" href="{% url 'panel_movimientos' %}">Movimientos</a><a class="btn btn-outline-secondary btn-sm" href="{% url 'logout' %}">Cerrar sesión</a></div></div></nav>
+<main class="container py-4" style="max-width:720px">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+<h2 class="h4 mb-0">{{ modo }} movimiento</h2>
+<a class="btn btn-outline-secondary btn-sm" href="{% url 'panel_movimientos' %}">Volver</a>
+</div>
+{% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags|default:'info' }}">{{ m }}</div>{% endfor %}{% endif %}
+<div class="card bp-card"><div class="card-body p-4">
+<form method="post" class="row g-3">{% csrf_token %}
+<div class="col-6"><label class="form-label">Instrumento de origen</label><select name="origen" class="form-select bp-input" required><option value="">Seleccionar origen</option>{% for i in instrumentos %}<option value="{{ i.id }}" {% if valores.origen == i.id|stringformat:'s' %}selected{% endif %}>{{ i.alias|default:i.uuid }} - {{ i.banco.nombre }} {% if i.tarjeta %}(saldo ${{ i.tarjeta.saldo }}){% endif %}</option>{% endfor %}</select></div>
+<div class="col-6"><label class="form-label">Instrumento de destino</label><select name="destino" class="form-select bp-input" required><option value="">Seleccionar destino</option>{% for i in instrumentos %}<option value="{{ i.id }}" {% if valores.destino == i.id|stringformat:'s' %}selected{% endif %}>{{ i.alias|default:i.uuid }} - {{ i.banco.nombre }} {% if i.tarjeta %}(saldo ${{ i.tarjeta.saldo }}){% endif %}</option>{% endfor %}</select></div>
+<div class="col-6"><label class="form-label">Monto</label><input name="monto" class="form-control bp-input" type="number" min="1" step="1" value="{{ valores.monto }}"></div>
+<div class="col-6"><label class="form-label">Estado</label><select name="estado" class="form-select bp-input" required>{% for codigo, nombre in estados %}<option value="{{ codigo }}" {% if valores.estado == codigo %}selected{% endif %}>{{ nombre }}</option>{% endfor %}</select></div>
+<div class="col-12"><label class="form-label">Descripción</label><input name="descripcion" class="form-control bp-input" maxlength="255" value="{{ valores.descripcion }}"></div>
+<div class="col-12 d-flex gap-2"><button class="btn btn-beatpay" type="submit">Guardar</button><a class="btn btn-outline-secondary" href="{% url 'panel_movimientos' %}">Cancelar</a></div>
+</form>
+{% if movimiento and movimiento.estado == 'Completado' %}
+<div class="alert alert-info mt-3">Este movimiento está completado. No se puede editar. Use "Cambiar estado" desde el listado para modificarlo.</div>
+{% endif %}
+</div></div>
+</main>
+<script src="{% static 'core/js/app.js' %}?v=6"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body></html>
