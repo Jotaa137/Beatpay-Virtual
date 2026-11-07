@@ -10,7 +10,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.db.models import ProtectedError, Q
+from django.db.models import Count, ProtectedError, Q
 from django.shortcuts import redirect, render
 
 from .models import (
@@ -137,6 +137,86 @@ def _validar_alta(datos):
     if len(datos['password']) < 6:
         errores.append('La clave debe tener al menos 6 caracteres.')
 
+    return errores
+
+
+def _datos_cliente(request):
+    return {
+        'nombre': request.POST.get('nombre', '').strip(),
+        'apellido': request.POST.get('apellido', '').strip(),
+        'rut': request.POST.get('rut', '').strip().upper() or None,
+        'email': request.POST.get('email', '').strip().lower(),
+        'telefono': request.POST.get('telefono', '').strip(),
+        'direccion': request.POST.get('direccion', '').strip(),
+        'activo': request.POST.get('activo') == 'on',
+    }
+
+
+def _validar_cliente(datos, cliente=None):
+    errores = []
+    if len(datos['nombre']) < 2 or len(datos['nombre']) > 80:
+        errores.append('El nombre debe tener entre 2 y 80 caracteres.')
+    if len(datos['apellido']) > 80:
+        errores.append('El apellido no puede superar los 80 caracteres.')
+    if datos['email']:
+        error = _validar_email(datos['email'])
+        if error:
+            errores.append(error)
+    if len(datos['telefono']) > 20:
+        errores.append('El teléfono no puede superar los 20 caracteres.')
+    if len(datos['direccion']) > 200:
+        errores.append('La dirección no puede superar los 200 caracteres.')
+    if datos['rut']:
+        if len(datos['rut']) > 12:
+            errores.append('El RUT no puede superar los 12 caracteres.')
+        else:
+            qs = Cliente.objects.filter(rut=datos['rut'])
+            if cliente is not None:
+                qs = qs.exclude(pk=cliente.pk)
+            if qs.exists():
+                errores.append('Ese RUT ya está registrado.')
+    return errores
+
+
+def _guardar_cliente(cliente, datos):
+    for campo, valor in datos.items():
+        setattr(cliente, campo, valor)
+    cliente.save()
+    if cliente.user_id:
+        user = cliente.user
+        user.first_name = datos['nombre']
+        user.last_name = datos['apellido']
+        user.email = datos['email']
+        user.save(update_fields=['first_name', 'last_name', 'email'])
+
+
+def _datos_banco(request):
+    return {
+        'nombre': request.POST.get('nombre', '').strip(),
+        'codigo': request.POST.get('codigo', '').strip().upper(),
+        'es_interno': request.POST.get('es_interno') == 'on',
+        'activo': request.POST.get('activo') == 'on',
+    }
+
+
+def _validar_banco(datos, banco=None):
+    errores = []
+    if len(datos['nombre']) < 2 or len(datos['nombre']) > 80:
+        errores.append('El nombre debe tener entre 2 y 80 caracteres.')
+    if len(datos['codigo']) < 2 or len(datos['codigo']) > 20:
+        errores.append('El código debe tener entre 2 y 20 caracteres.')
+    elif not all(c.isalnum() or c in '-_' for c in datos['codigo']):
+        errores.append('El código solo puede tener letras, números, guion y guion bajo.')
+    qs = Banco.objects.filter(nombre__iexact=datos['nombre'])
+    if banco is not None:
+        qs = qs.exclude(pk=banco.pk)
+    if qs.exists():
+        errores.append('Ya existe un banco con ese nombre.')
+    qs = Banco.objects.filter(codigo__iexact=datos['codigo'])
+    if banco is not None:
+        qs = qs.exclude(pk=banco.pk)
+    if qs.exists():
+        errores.append('Ya existe un banco con ese código.')
     return errores
 
 
@@ -533,45 +613,14 @@ def usuario_detalle(request, user_id):
             _log(request.user.username, 'cupo', f'{target.username} rechazado')
             messages.success(request, f'Solicitud de {target.username} rechazada.')
         elif action == 'editar_cliente':
-            nombre = request.POST.get('nombre', '').strip()
-            apellido = request.POST.get('apellido', '').strip()
-            rut = request.POST.get('rut', '').strip().upper() or None
-            email = request.POST.get('email', '').strip().lower()
-            telefono = request.POST.get('telefono', '').strip()
-            direccion = request.POST.get('direccion', '').strip()
-            errores = []
-            if len(nombre) < 2 or len(nombre) > 80:
-                errores.append('El nombre debe tener entre 2 y 80 caracteres.')
-            if len(apellido) > 80:
-                errores.append('El apellido no puede superar los 80 caracteres.')
-            if email:
-                error = _validar_email(email)
-                if error:
-                    errores.append(error)
-            if len(telefono) > 20:
-                errores.append('El teléfono no puede superar los 20 caracteres.')
-            if len(direccion) > 200:
-                errores.append('La dirección no puede superar los 200 caracteres.')
-            if rut:
-                if len(rut) > 12:
-                    errores.append('El RUT no puede superar los 12 caracteres.')
-                elif Cliente.objects.filter(rut=rut).exclude(pk=tcliente.pk).exists():
-                    errores.append('Ese RUT ya está registrado.')
+            datos = _datos_cliente(request)
+            datos['activo'] = tcliente.activo
+            errores = _validar_cliente(datos, tcliente)
             if errores:
                 for e in errores:
                     messages.error(request, e)
             else:
-                tcliente.nombre = nombre
-                tcliente.apellido = apellido
-                tcliente.rut = rut
-                tcliente.email = email
-                tcliente.telefono = telefono
-                tcliente.direccion = direccion
-                tcliente.save()
-                target.first_name = nombre
-                target.last_name = apellido
-                target.email = email
-                target.save(update_fields=['first_name', 'last_name', 'email'])
+                _guardar_cliente(tcliente, datos)
                 _log(request.user.username, 'cliente', f'{target.username}: datos actualizados')
                 messages.success(request, f'Datos de {target.username} actualizados.')
         elif action == 'eliminar':
@@ -597,3 +646,202 @@ def usuario_detalle(request, user_id):
         'tarjeta': ttarjeta,
         'historial': historial,
     })
+
+
+@login_required
+@user_passes_test(es_staff, login_url='dashboard')
+def panel_clientes(request):
+    q = request.GET.get('q', '').strip()
+    estado = request.GET.get('estado', '')
+    clientes = Cliente.objects.select_related('user').prefetch_related('tarjetas')
+    if q:
+        clientes = clientes.filter(
+            Q(nombre__icontains=q)
+            | Q(apellido__icontains=q)
+            | Q(rut__icontains=q)
+            | Q(email__icontains=q)
+        )
+    if estado == 'activos':
+        clientes = clientes.filter(activo=True)
+    elif estado == 'inactivos':
+        clientes = clientes.filter(activo=False)
+    return render(request, 'panel_clientes.html', {
+        'clientes': clientes,
+        'q': q,
+        'estado': estado,
+        'total': clientes.count(),
+    })
+
+
+@login_required
+@user_passes_test(es_staff, login_url='dashboard')
+def cliente_form(request, cliente_id=None):
+    cliente = None
+    if cliente_id is not None:
+        try:
+            cliente = Cliente.objects.select_related('user').get(pk=cliente_id)
+        except Cliente.DoesNotExist:
+            messages.error(request, 'Cliente no encontrado.')
+            return redirect('panel_clientes')
+
+    if request.method == 'POST':
+        datos = _datos_cliente(request)
+        errores = _validar_cliente(datos, cliente)
+        if errores:
+            for e in errores:
+                messages.error(request, e)
+            valores = datos
+        else:
+            if cliente is None:
+                cliente = Cliente.objects.create(**datos)
+                _log(request.user.username, 'cliente', f'creado: {cliente}')
+                messages.success(request, f'Cliente {cliente} creado.')
+            else:
+                _guardar_cliente(cliente, datos)
+                _log(request.user.username, 'cliente', f'actualizado: {cliente}')
+                messages.success(request, f'Cliente {cliente} actualizado.')
+            return redirect('panel_clientes')
+    elif cliente is None:
+        valores = {
+            'nombre': '',
+            'apellido': '',
+            'rut': '',
+            'email': '',
+            'telefono': '',
+            'direccion': '',
+            'activo': True,
+        }
+    else:
+        valores = {
+            'nombre': cliente.nombre,
+            'apellido': cliente.apellido,
+            'rut': cliente.rut or '',
+            'email': cliente.email,
+            'telefono': cliente.telefono,
+            'direccion': cliente.direccion,
+            'activo': cliente.activo,
+        }
+
+    return render(request, 'cliente_form.html', {
+        'cliente': cliente,
+        'valores': valores,
+        'modo': 'Editar' if cliente else 'Nuevo',
+    })
+
+
+@login_required
+@user_passes_test(es_staff, login_url='dashboard')
+def cliente_estado(request, cliente_id):
+    if request.method != 'POST':
+        return redirect('panel_clientes')
+    try:
+        cliente = Cliente.objects.get(pk=cliente_id)
+    except Cliente.DoesNotExist:
+        messages.error(request, 'Cliente no encontrado.')
+        return redirect('panel_clientes')
+    cliente.activo = not cliente.activo
+    cliente.save(update_fields=['activo'])
+    _log(request.user.username, 'cliente', f'{cliente}: {"activo" if cliente.activo else "inactivo"}')
+    messages.success(request, f'Cliente {cliente} {"activado" if cliente.activo else "desactivado"}.')
+    return redirect('panel_clientes')
+
+
+@login_required
+@user_passes_test(es_staff, login_url='dashboard')
+def panel_bancos(request):
+    q = request.GET.get('q', '').strip()
+    tipo = request.GET.get('tipo', '')
+    bancos = Banco.objects.annotate(
+        n_tarjetas=Count('tarjetas', distinct=True),
+        n_instrumentos=Count('instrumentos', distinct=True),
+    )
+    if q:
+        bancos = bancos.filter(Q(nombre__icontains=q) | Q(codigo__icontains=q))
+    if tipo == 'internos':
+        bancos = bancos.filter(es_interno=True)
+    elif tipo == 'externos':
+        bancos = bancos.filter(es_interno=False)
+    return render(request, 'panel_bancos.html', {
+        'bancos': bancos,
+        'q': q,
+        'tipo': tipo,
+        'total': bancos.count(),
+    })
+
+
+@login_required
+@user_passes_test(es_staff, login_url='dashboard')
+def banco_form(request, banco_id=None):
+    banco = None
+    if banco_id is not None:
+        try:
+            banco = Banco.objects.get(pk=banco_id)
+        except Banco.DoesNotExist:
+            messages.error(request, 'Banco no encontrado.')
+            return redirect('panel_bancos')
+
+    if request.method == 'POST':
+        datos = _datos_banco(request)
+        if banco is not None and banco.codigo == 'BEATPAY':
+            datos['nombre'] = banco.nombre
+            datos['codigo'] = 'BEATPAY'
+            datos['es_interno'] = True
+            datos['activo'] = True
+        errores = _validar_banco(datos, banco)
+        if errores:
+            for e in errores:
+                messages.error(request, e)
+            valores = datos
+        else:
+            if banco is None:
+                banco = Banco.objects.create(**datos)
+                _log(request.user.username, 'banco', f'creado: {banco.codigo}')
+                messages.success(request, f'Banco {banco.nombre} creado.')
+            else:
+                for campo, valor in datos.items():
+                    setattr(banco, campo, valor)
+                banco.save()
+                _log(request.user.username, 'banco', f'actualizado: {banco.codigo}')
+                messages.success(request, f'Banco {banco.nombre} actualizado.')
+            return redirect('panel_bancos')
+    elif banco is None:
+        valores = {
+            'nombre': '',
+            'codigo': '',
+            'es_interno': False,
+            'activo': True,
+        }
+    else:
+        valores = {
+            'nombre': banco.nombre,
+            'codigo': banco.codigo,
+            'es_interno': banco.es_interno,
+            'activo': banco.activo,
+        }
+
+    return render(request, 'banco_form.html', {
+        'banco': banco,
+        'valores': valores,
+        'modo': 'Editar' if banco else 'Nuevo',
+        'es_beatpay': bool(banco and banco.codigo == 'BEATPAY'),
+    })
+
+
+@login_required
+@user_passes_test(es_staff, login_url='dashboard')
+def banco_estado(request, banco_id):
+    if request.method != 'POST':
+        return redirect('panel_bancos')
+    try:
+        banco = Banco.objects.get(pk=banco_id)
+    except Banco.DoesNotExist:
+        messages.error(request, 'Banco no encontrado.')
+        return redirect('panel_bancos')
+    if banco.es_interno or banco.codigo == 'BEATPAY':
+        messages.error(request, 'El banco interno de BeatPay no se puede desactivar.')
+    else:
+        banco.activo = not banco.activo
+        banco.save(update_fields=['activo'])
+        _log(request.user.username, 'banco', f'{banco.codigo}: {"activo" if banco.activo else "inactivo"}')
+        messages.success(request, f'Banco {banco.nombre} {"activado" if banco.activo else "desactivado"}.')
+    return redirect('panel_bancos')
