@@ -29,6 +29,7 @@ urlpatterns = [
     path('panel/movimientos/nuevo', views.movimiento_form, name='movimiento_nuevo'),
     path('panel/movimientos/<int:movimiento_id>/editar', views.movimiento_form, name='movimiento_editar'),
     path('panel/movimientos/<int:movimiento_id>/estado', views.movimiento_estado, name='movimiento_estado'),
+    path('panel/reportes', views.reportes, name='reportes'),
     path('panel/dashboard', views.panel_dashboard, name='panel_dashboard'),
     path('dashboard', views.dashboard, name='dashboard'),
     path('cargar', views.cargar, name='cargar'),

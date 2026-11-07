@@ -1,12 +1,8 @@
 /* BeatPay Virtual - estilo minimalista (solo Bootstrap 5.3) */
 /* 1. Colores por tema */
 :root {
-  --bp-bg: #f4f6f9; --bp-text: #212529; --bp-card: #fff;
-  --bp-border: #dee2e6; --bp-muted: #6c757d; --bp-accent: #0d6efd;
-}
-[data-theme="dark"] {
-  --bp-bg: #12141c; --bp-text: #e8eaf0; --bp-card: #1b1e2a;
-  --bp-border: #2a2e40; --bp-muted: #9aa0b5; --bp-accent: #5b8cff;
+  --bp-bg: #0f172a; --bp-text: #f1f5f9; --bp-card: #1e293b;
+  --bp-border: #334155; --bp-muted: #94a3b8; --bp-accent: #3b82f6;
 }
 
 /* 2. Base */
@@ -35,20 +31,16 @@ footer { color: var(--bp-muted); font-size: .85rem; }
 /* 6. Botones e inputs (compatibles con clases viejas) */
 .btn-beatpay { background: var(--bp-accent) !important; border: 0 !important; color: #fff !important; font-weight: 600; }
 .btn-beatpay:hover { filter: brightness(1.1); }
-.bp-input { border-radius: 8px !important; }
-[data-theme="dark"] .bp-input { background: #12141c !important; color: var(--bp-text) !important; border-color: var(--bp-border) !important; }
-[data-theme="dark"] .bp-input::placeholder { color: var(--bp-muted) !important; }
+.bp-input { border-radius: 8px !important; background: #0f172a !important; color: var(--bp-text) !important; border-color: var(--bp-border) !important; }
+.bp-input::placeholder { color: var(--bp-muted) !important; }
 label.form-label { font-weight: 600; }
 
 /* 7. Tablas en oscuro */
-[data-theme="dark"] .table { --bs-table-bg: transparent; --bs-table-color: var(--bp-text); --bs-table-border-color: var(--bp-border); --bs-table-striped-bg: #ffffff0d; }
-[data-theme="dark"] .table > :not(caption) > * > * { color: var(--bp-text); }
-[data-theme="dark"] .table .bp-muted { color: var(--bp-muted) !important; }
+.table { --bs-table-bg: transparent; --bs-table-color: var(--bp-text); --bs-table-border-color: var(--bp-border); --bs-table-striped-bg: #1e293b; }
+.table > :not(caption) > * > * { color: var(--bp-text); }
+.table .bp-muted { color: var(--bp-muted) !important; }
 
-/* 8. Boton tema flotante */
-#btn-tema { position: fixed; right: 14px; bottom: 14px; z-index: 9999; width: 48px; height: 48px; border-radius: 50%; font-size: 22px; line-height: 1; background: var(--bp-card); border: 1px solid var(--bp-border); color: var(--bp-text); cursor: pointer; box-shadow: 0 4px 12px #0003; }
-
-/* 9. Panel admin profesional */
+/* 8. Panel admin profesional */
 .admin-head { background: linear-gradient(135deg, #1a237e, #0d6efd); color: #fff; border-radius: 12px; padding: 1.2rem 1.4rem; }
 .admin-head .bp-muted { color: #c5cae9 !important; }
 .avatar { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: var(--bp-accent); color: #fff; font-weight: 800; font-size: .9rem; margin-right: .5rem; vertical-align: middle; }
@@ -61,12 +53,11 @@ label.form-label { font-weight: 600; }
 .table thead th { text-transform: uppercase; font-size: .72rem; letter-spacing: 1px; color: var(--bp-muted); }
 .table td.num, .table th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
-/* 10. Boleta (impresion) */
+/* 9. Boleta (impresion) */
 @media print {
   body { background: #fff !important; }
   body * { visibility: hidden; }
   #boleta, #boleta * { visibility: visible; }
   #boleta { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; }
   #boleta .btn { display: none; }
-  #btn-tema { display: none !important; }
 }

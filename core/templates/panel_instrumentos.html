@@ -1,51 +1,92 @@
-{% load static %}<!DOCTYPE html>
-<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Instrumentos - BeatPay</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="{% static 'core/css/style.css' %}?v=5"></head>
-<body class="d-flex flex-column min-vh-100">
-<nav class="navbar"><div class="container-fluid px-4" style="display:flex;align-items:center;gap:10px"><a class="navbar-brand logo" href="{% url 'index' %}">BEATPAY <span>VIRTUAL</span></a><div class="d-flex gap-2 align-items-center" style="margin-left:auto"><a class="btn btn-secondary btn-sm" href="{% url 'panel' %}">Panel</a><a class="btn btn-outline-secondary btn-sm" href="{% url 'panel_clientes' %}">Clientes</a><a class="btn btn-outline-secondary btn-sm" href="{% url 'panel_bancos' %}">Bancos</a><a class="btn btn-outline-secondary btn-sm" href="{% url 'panel_tarjetas' %}">Tarjetas</a><a class="btn btn-outline-secondary btn-sm" href="{% url 'logout' %}">Cerrar sesión</a></div></div></nav>
-<main class="container py-4">
+{% extends 'base_panel.html' %}
+
+{% block title %}Instrumentos - BeatPay{% endblock %}
+
+{% block sidebar_items %}
+<li><a href="{% url 'panel' %}"><span class="icon">📊</span><span>Panel</span></a></li>
+<li><a href="{% url 'panel_clientes' %}"><span class="icon">👥</span><span>Clientes</span></a></li>
+<li><a href="{% url 'panel_tarjetas' %}"><span class="icon">💳</span><span>Tarjetas</span></a></li>
+<li><a href="{% url 'panel_movimientos' %}"><span class="icon">🔄</span><span>Movimientos</span></a></li>
+<li><a class="active" href="{% url 'panel_instrumentos' %}"><span class="icon">🏦</span><span>Instrumentos</span></a></li>
+<li><a href="{% url 'panel_bancos' %}"><span class="icon">🏛️</span><span>Bancos</span></a></li>
+<li><a href="{% url 'logout' %}"><span class="icon">🚪</span><span>Cerrar sesión</span></a></li>
+{% endblock %}
+
+{% block page_title %}Instrumentos Financieros{% endblock %}
+{% block page_subtitle %}Instrumentos internos y externos{% endblock %}
+
+{% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-<h2 class="h4 mb-0">Instrumentos Financieros</h2>
-<div class="d-flex flex-wrap gap-2"><a class="btn btn-beatpay btn-sm" href="{% url 'instrumento_nuevo' %}">Nuevo instrumento</a><a class="btn btn-outline-secondary btn-sm" href="{% url 'panel' %}">Volver al panel</a></div>
+  <h2>Instrumentos Financieros</h2>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-beatpay btn-sm" href="{% url 'instrumento_nuevo' %}">Nuevo instrumento</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'panel' %}">Volver al panel</a>
+  </div>
 </div>
-{% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags|default:'info' }}">{{ m }}</div>{% endfor %}{% endif %}
 
-<div class="card bp-card mb-3"><div class="card-body">
-<form method="get" class="d-flex flex-wrap gap-2 align-items-center">
-<input name="q" class="form-control bp-input" style="max-width:240px" placeholder="Buscar titular, alias o banco..." value="{{ q }}">
-<select name="tipo" class="form-select bp-input" style="max-width:160px" onchange="this.form.submit()">
-<option value="" {% if not tipo %}selected{% endif %}>Todos los tipos</option>
-{% for codigo, nombre in tipos %}<option value="{{ codigo }}" {% if tipo == codigo %}selected{% endif %}>{{ nombre }}</option>{% endfor %}
-</select>
-<button class="btn btn-secondary" type="submit">Buscar</button>
-<span class="bp-muted ms-auto">{{ total }} instrumento{{ total|pluralize }}</span>
-</form>
-</div></div>
+{% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags|default:'info' }} mx-4 mb-3">{{ m }}</div>{% endfor %}{% endif %}
 
-<div class="card bp-card"><div class="card-body">
-<div class="table-responsive"><table class="table table-striped table-hover mb-0">
-<thead><tr><th>Alias</th><th>Tipo</th><th>Banco</th><th>Titular</th><th>Tarjeta</th><th>Estado</th><th></th></tr></thead>
-<tbody>
-{% for i in instrumentos %}<tr>
-<td><b>{{ i.alias|default:i.uuid }}</b><br><span class="bp-muted">{{ i.uuid }}</span></td>
-<td>{% if i.tipo == 'INTERNO' %}<span class="badge text-bg-primary">Interno</span>{% else %}<span class="badge text-bg-secondary">Externo</span>{% endif %}</td>
-<td>{{ i.banco.nombre }}</td>
-<td>{{ i.titular|default:'—' }}</td>
-<td>{% if i.tarjeta %}{{ i.tarjeta.numero }}{% else %}—{% endif %}</td>
-<td>{% if i.activo %}<span class="badge text-bg-success">Activo</span>{% else %}<span class="badge text-bg-danger">Inactivo</span>{% endif %}</td>
-<td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'instrumento_editar' i.id %}">Editar</a>
-{% if i.movimientos_enviados.exists or i.movimientos_recibidos.exists %}
-<span class="badge text-bg-light">Con movimientos</span>
-{% else %}
-<form method="post" action="{% url 'instrumento_estado' i.id %}" class="d-inline" onsubmit="return confirm('¿Cambiar el estado de {{ i.alias|default:i.uuid }}?')">{% csrf_token %}<button class="btn btn-sm {% if i.activo %}btn-outline-danger{% else %}btn-outline-success{% endif %}" type="submit">{% if i.activo %}Desactivar{% else %}Activar{% endif %}</button></form>
-{% endif %}
-</td>
-</tr>{% empty %}<tr><td colspan="7" class="text-center bp-muted py-4">🔍 Sin instrumentos con ese criterio.</td></tr>{% endfor %}
-</tbody></table></div>
-</div></div>
-</main>
-<script src="{% static 'core/js/app.js' %}?v=5"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body></html>
+<div class="bp-card">
+  <div class="bp-card-body">
+    <form method="get" class="d-flex flex-wrap gap-2 align-items-center">
+      <input name="q" class="form-control bp-input" style="max-width:240px" placeholder="Buscar titular, alias o banco..." value="{{ q }}">
+      <select name="tipo" class="form-select bp-input" style="max-width:160px" onchange="this.form.submit()">
+        <option value="" {% if not tipo %}selected{% endif %}>Todos los tipos</option>
+        {% for codigo, nombre in tipos %}<option value="{{ codigo }}" {% if tipo == codigo %}selected{% endif %}>{{ nombre }}</option>{% endfor %}
+      </select>
+      <button class="btn btn-secondary" type="submit">Buscar</button>
+      <span class="bp-muted ms-auto">{{ total }} instrumento{{ total|pluralize }}</span>
+    </form>
+  </div>
+</div>
+
+<div class="bp-card">
+  <div class="bp-card-body">
+    <div class="bp-table-container">
+      <table class="bp-table">
+        <thead>
+          <tr>
+            <th>Alias</th>
+            <th>Tipo</th>
+            <th>Banco</th>
+            <th>Titular</th>
+            <th>Tarjeta</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for i in instrumentos %}
+          <tr>
+            <td><b>{{ i.alias|default:i.uuid }}</b><br><span class="bp-muted">{{ i.uuid }}</span></td>
+            <td>
+              {% if i.tipo == 'INTERNO' %}<span class="bp-badge" style="background:var(--bp-accent);color:#fff;">Interno</span>
+              {% else %}<span class="bp-badge" style="background:#64748b;color:#fff;">Externo</span>{% endif %}
+            </td>
+            <td>{{ i.banco.nombre }}</td>
+            <td>{{ i.titular|default:'—' }}</td>
+            <td>{% if i.tarjeta %}{{ i.tarjeta.numero }}{% else %}—{% endif %}</td>
+            <td>
+              {% if i.activo %}<span class="bp-badge bp-badge-activa">Activo</span>{% else %}<span class="bp-badge bp-badge-bloqueada">Inactivo</span>{% endif %}
+            </td>
+            <td class="text-end">
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'instrumento_editar' i.id %}">Editar</a>
+              {% if i.movimientos_enviados.exists or i.movimientos_recibidos.exists %}
+              <span class="bp-badge" style="background:#334155;color:#94a3b8;">Con movimientos</span>
+              {% else %}
+              <form method="post" action="{% url 'instrumento_estado' i.id %}" class="d-inline" onsubmit="return confirm('¿Cambiar el estado de {{ i.alias|default:i.uuid }}?')">
+                {% csrf_token %}
+                <button class="btn btn-sm {% if i.activo %}btn-outline-danger{% else %}btn-outline-success{% endif %}" type="submit">{% if i.activo %}Desactivar{% else %}Activar{% endif %}</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" class="text-center bp-muted py-4">🔍 Sin instrumentos con ese criterio.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

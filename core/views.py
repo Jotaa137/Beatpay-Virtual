@@ -10,10 +10,11 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.db.models import Count, ProtectedError, Q, Sum
+from django.db.models import Count, ProtectedError, Q, Sum, Avg, F
 from django.db import transaction
 from django.shortcuts import redirect, render
 from django.utils import timezone
+from datetime import date, timedelta
 
 from .models import (
     Auditoria,
@@ -1465,4 +1466,326 @@ def panel_dashboard(request):
         'tipo_data': tipo_data,
         'evolucion_labels': evolucion_labels,
         'evolucion_data': evolucion_data,
+    })
+
+
+# =====================================================================
+# Reportes - Evaluación 3 (20 consultas ORM)
+# =====================================================================
+
+@login_required
+@user_passes_test(es_staff, login_url='dashboard')
+def reportes(request):
+    """Página de reportes con las 20 consultas ORM de la evaluación 3."""
+
+    # ---------- Datos base para selects ----------
+    clientes = Cliente.objects.all().order_by('apellido', 'nombre')
+    tarjetas_internas = Tarjeta.objects.filter(
+        instrumento__tipo='INTERNO'
+    ).select_related('cliente', 'banco').order_by('numero')
+    bancos_externos = Banco.objects.filter(es_interno=False).order_by('nombre')
+
+    # ---------- P1: Todos los clientes ----------
+    todos_clientes = Cliente.objects.all().order_by('apellido', 'nombre')
+
+    # ---------- P2: Tarjetas por estado ----------
+    tarjetas_activas = Tarjeta.objects.filter(estado='Activa').count()
+    tarjetas_bloqueadas = Tarjeta.objects.filter(estado='Bloqueada').count()
+    tarjetas_inactivas = Tarjeta.objects.filter(estado='Inactiva').count()
+
+    # ---------- P3: Tarjetas de un cliente ----------
+    cliente_id = request.GET.get('cliente_id')
+    tarjetas_cliente = None
+    cliente_seleccionado = None
+    if cliente_id:
+        try:
+            cliente_seleccionado = Cliente.objects.get(pk=cliente_id)
+            tarjetas_cliente = Tarjeta.objects.filter(cliente=cliente_seleccionado)
+        except Cliente.DoesNotExist:
+            pass
+
+    # ---------- P4: Últimos 10 movimientos ----------
+    ultimos_10 = Movimiento.objects.select_related(
+        'origen__banco', 'origen__tarjeta',
+        'destino__banco', 'destino__tarjeta',
+    ).order_by('-fecha')[:10]
+
+    # ---------- P5: Movimientos del día ----------
+    hoy = date.today()
+    movimientos_dia = Movimiento.objects.filter(fecha__date=hoy).count()
+
+    # ---------- P6: Movimientos enviados desde tarjeta interna ----------
+    tarjeta_origen_id = request.GET.get('tarjeta_origen')
+    movimientos_enviados = None
+    tarjeta_origen_sel = None
+    if tarjeta_origen_id:
+        try:
+            tarjeta_origen_sel = Tarjeta.objects.get(pk=tarjeta_origen_id, instrumento__tipo='INTERNO')
+            movimientos_enviados = Movimiento.objects.filter(origen__tarjeta=tarjeta_origen_sel)
+        except Tarjeta.DoesNotExist:
+            pass
+
+    # ---------- P7: Movimientos recibidos por tarjeta interna ----------
+    tarjeta_destino_id = request.GET.get('tarjeta_destino')
+    movimientos_recibidos = None
+    tarjeta_destino_sel = None
+    if tarjeta_destino_id:
+        try:
+            tarjeta_destino_sel = Tarjeta.objects.get(pk=tarjeta_destino_id, instrumento__tipo='INTERNO')
+            movimientos_recibidos = Movimiento.objects.filter(destino__tarjeta=tarjeta_destino_sel)
+        except Tarjeta.DoesNotExist:
+            pass
+
+    # ---------- P8: Movimientos en rango de fechas ----------
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    movimientos_rango = None
+    if fecha_inicio and fecha_fin:
+        try:
+            fi = date.fromisoformat(fecha_inicio)
+            ff = date.fromisoformat(fecha_fin)
+            movimientos_rango = Movimiento.objects.filter(fecha__date__range=[fi, ff])
+        except ValueError:
+            pass
+
+    # ---------- P9: Transferencias hacia Tenpo ----------
+    movimientos_tenpo = Movimiento.objects.filter(
+        destino__banco__nombre__icontains='tenpo'
+    ).select_related('origen__banco', 'destino__banco')
+
+    # ---------- P10: Transferencias recibidas desde MACH ----------
+    movimientos_mach = Movimiento.objects.filter(
+        origen__banco__nombre__icontains='mach'
+    ).select_related('origen__banco', 'destino__banco')
+
+    # ---------- P11: Movimientos por estado ----------
+    mov_completados = Movimiento.objects.filter(estado='Completado').count()
+    mov_pendientes = Movimiento.objects.filter(estado='Pendiente').count()
+    mov_rechazados = Movimiento.objects.filter(estado='Rechazado').count()
+
+    # ---------- P12: 10 movimientos con mayor monto ----------
+    top_10_montos = Movimiento.objects.select_related(
+        'origen__banco', 'destino__banco',
+    ).order_by('-monto')[:10]
+
+    # ---------- P13: Monto total enviado por cada tarjeta interna en período ----------
+    periodo_inicio = request.GET.get('periodo_inicio')
+    periodo_fin = request.GET.get('periodo_fin')
+    resumen_origen = None
+    if periodo_inicio and periodo_fin:
+        try:
+            pi = date.fromisoformat(periodo_inicio)
+            pf = date.fromisoformat(periodo_fin)
+            resumen_origen = list(
+                Movimiento.objects.filter(
+                    fecha__date__range=[pi, pf],
+                    origen__tarjeta__isnull=False,
+                    origen__tarjeta__instrumento__tipo='INTERNO',
+                ).values(
+                    'origen__tarjeta__numero',
+                    'origen__tarjeta__cliente__nombre',
+                    'origen__tarjeta__cliente__apellido',
+                ).annotate(
+                    total_enviado=Sum('monto'),
+                    cantidad=Count('id'),
+                ).order_by('-total_enviado')
+            )
+        except ValueError:
+            pass
+
+    # ---------- P14: Monto total recibido por cada tarjeta interna en período ----------
+    resumen_destino = None
+    if periodo_inicio and periodo_fin:
+        try:
+            pi = date.fromisoformat(periodo_inicio)
+            pf = date.fromisoformat(periodo_fin)
+            resumen_destino = list(
+                Movimiento.objects.filter(
+                    fecha__date__range=[pi, pf],
+                    destino__tarjeta__isnull=False,
+                    destino__tarjeta__instrumento__tipo='INTERNO',
+                ).values(
+                    'destino__tarjeta__numero',
+                    'destino__tarjeta__cliente__nombre',
+                    'destino__tarjeta__cliente__apellido',
+                ).annotate(
+                    total_recibido=Sum('monto'),
+                    cantidad=Count('id'),
+                ).order_by('-total_recibido')
+            )
+        except ValueError:
+            pass
+
+    # ---------- P15: Movimientos entre dos tarjetas internas ----------
+    tarjeta1_id = request.GET.get('tarjeta1')
+    tarjeta2_id = request.GET.get('tarjeta2')
+    movimientos_entre_tarjetas = None
+    if tarjeta1_id and tarjeta2_id:
+        try:
+            t1 = Tarjeta.objects.get(pk=tarjeta1_id, instrumento__tipo='INTERNO')
+            t2 = Tarjeta.objects.get(pk=tarjeta2_id, instrumento__tipo='INTERNO')
+            movimientos_entre_tarjetas = Movimiento.objects.filter(
+                Q(origen__tarjeta=t1, destino__tarjeta=t2) |
+                Q(origen__tarjeta=t2, destino__tarjeta=t1),
+            ).select_related('origen__banco', 'destino__banco')
+        except Tarjeta.DoesNotExist:
+            pass
+
+    # ---------- P16: Institución externa con más transferencias enviadas ----------
+    banco_externo_mas_envio_qs = list(
+        Movimiento.objects.filter(
+            destino__banco__es_interno=False,
+        ).values(
+            'destino__banco__nombre',
+            'destino__banco__codigo',
+        ).annotate(
+            cantidad=Count('id'),
+        ).order_by('-cantidad')[:1]
+    )
+    banco_externo_mas_envio = banco_externo_mas_envio_qs[0] if banco_externo_mas_envio_qs else None
+
+    # ---------- P17: Institución externa que envió mayor monto a internas ----------
+    banco_externo_mas_monto_qs = list(
+        Movimiento.objects.filter(
+            origen__banco__es_interno=False,
+            destino__tarjeta__isnull=False,
+            destino__tarjeta__instrumento__tipo='INTERNO',
+        ).values(
+            'origen__banco__nombre',
+            'origen__banco__codigo',
+        ).annotate(
+            total_enviado=Sum('monto'),
+            cantidad=Count('id'),
+        ).order_by('-total_enviado')[:1]
+    )
+    banco_externo_mas_monto = banco_externo_mas_monto_qs[0] if banco_externo_mas_monto_qs else None
+
+    # ---------- P18: Promedio de transferencias completadas último mes ----------
+    hace_un_mes = hoy - timedelta(days=30)
+    promedio_ultimo_mes = Movimiento.objects.filter(
+        estado='Completado',
+        fecha__date__gte=hace_un_mes,
+    ).aggregate(
+        promedio=Avg('monto'),
+        total=Sum('monto'),
+        cantidad=Count('id'),
+    )
+
+    # ---------- P19: Porcentaje internos vs externos ----------
+    total_mov = Movimiento.objects.count()
+    mov_internos = Movimiento.objects.filter(
+        origen__banco__es_interno=True,
+        destino__banco__es_interno=True,
+    ).count()
+    mov_externos = total_mov - mov_internos
+    pct_interno = round((mov_internos / total_mov) * 100, 2) if total_mov > 0 else 0
+    pct_externo = round((mov_externos / total_mov) * 100, 2) if total_mov > 0 else 0
+
+    # ---------- P20: Distribución mensual por tipo ----------
+    ano_seleccionado = request.GET.get('ano', hoy.year)
+    try:
+        ano_seleccionado = int(ano_seleccionado)
+    except (ValueError, TypeError):
+        ano_seleccionado = hoy.year
+
+    distribucion_mensual = []
+    for mes in range(1, 13):
+        internos = Movimiento.objects.filter(
+            fecha__year=ano_seleccionado,
+            fecha__month=mes,
+            origen__banco__es_interno=True,
+            destino__banco__es_interno=True,
+        ).aggregate(total=Sum('monto'))['total'] or 0
+
+        entradas_ext = Movimiento.objects.filter(
+            fecha__year=ano_seleccionado,
+            fecha__month=mes,
+            origen__banco__es_interno=False,
+            destino__banco__es_interno=True,
+        ).aggregate(total=Sum('monto'))['total'] or 0
+
+        salidas_ext = Movimiento.objects.filter(
+            fecha__year=ano_seleccionado,
+            fecha__month=mes,
+            origen__banco__es_interno=True,
+            destino__banco__es_interno=False,
+        ).aggregate(total=Sum('monto'))['total'] or 0
+
+        distribucion_mensual.append({
+            'mes': mes,
+            'nombre_mes': date(ano_seleccionado, mes, 1).strftime('%b'),
+            'internos': internos,
+            'entradas_externas': entradas_ext,
+            'salidas_externas': salidas_ext,
+        })
+
+    años_disponibles = list(
+        Movimiento.objects.dates('fecha', 'year').values_list('fecha__year', flat=True).distinct()
+    )
+    if hoy.year not in años_disponibles:
+        años_disponibles.append(hoy.year)
+    años_disponibles = sorted(set(años_disponibles), reverse=True)
+
+    return render(request, 'reportes.html', {
+        # P1
+        'todos_clientes': todos_clientes,
+        # P2
+        'tarjetas_activas': tarjetas_activas,
+        'tarjetas_bloqueadas': tarjetas_bloqueadas,
+        'tarjetas_inactivas': tarjetas_inactivas,
+        # P3
+        'clientes': clientes,
+        'cliente_seleccionado': cliente_seleccionado,
+        'tarjetas_cliente': tarjetas_cliente,
+        # P4
+        'ultimos_10': ultimos_10,
+        # P5
+        'movimientos_dia': movimientos_dia,
+        'hoy': hoy,
+        # P6
+        'tarjetas_internas': tarjetas_internas,
+        'tarjeta_origen_sel': tarjeta_origen_sel,
+        'movimientos_enviados': movimientos_enviados,
+        # P7
+        'tarjeta_destino_sel': tarjeta_destino_sel,
+        'movimientos_recibidos': movimientos_recibidos,
+        # P8
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'movimientos_rango': movimientos_rango,
+        # P9
+        'movimientos_tenpo': movimientos_tenpo,
+        # P10
+        'movimientos_mach': movimientos_mach,
+        # P11
+        'mov_completados': mov_completados,
+        'mov_pendientes': mov_pendientes,
+        'mov_rechazados': mov_rechazados,
+        # P12
+        'top_10_montos': top_10_montos,
+        # P13
+        'periodo_inicio': periodo_inicio,
+        'periodo_fin': periodo_fin,
+        'resumen_origen': resumen_origen,
+        # P14
+        'resumen_destino': resumen_destino,
+        # P15
+        'movimientos_entre_tarjetas': movimientos_entre_tarjetas,
+        # P16
+        'banco_externo_mas_envio': banco_externo_mas_envio,
+        # P17
+        'banco_externo_mas_monto': banco_externo_mas_monto,
+        # P18
+        'promedio_ultimo_mes': promedio_ultimo_mes,
+        'hace_un_mes': hace_un_mes,
+        # P19
+        'total_mov': total_mov,
+        'mov_internos': mov_internos,
+        'mov_externos': mov_externos,
+        'pct_interno': pct_interno,
+        'pct_externo': pct_externo,
+        # P20
+        'ano_seleccionado': ano_seleccionado,
+        'distribucion_mensual': distribucion_mensual,
+        'años_disponibles': años_disponibles,
     })

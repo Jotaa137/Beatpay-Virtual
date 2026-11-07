@@ -1,0 +1,721 @@
+{% extends 'base_panel.html' %}
+
+{% block title %}Reportes - BeatPay{% endblock %}
+
+{% block sidebar_items %}
+<li><a href="{% url 'panel' %}"><span class="icon">📊</span><span>Panel</span></a></li>
+<li><a href="{% url 'panel_clientes' %}"><span class="icon">👥</span><span>Clientes</span></a></li>
+<li><a href="{% url 'panel_tarjetas' %}"><span class="icon">💳</span><span>Tarjetas</span></a></li>
+<li><a href="{% url 'panel_movimientos' %}"><span class="icon">🔄</span><span>Movimientos</span></a></li>
+<li><a href="{% url 'panel_instrumentos' %}"><span class="icon">🏦</span><span>Instrumentos</span></a></li>
+<li><a href="{% url 'panel_bancos' %}"><span class="icon">🏛️</span><span>Bancos</span></a></li>
+<li><a class="active" href="{% url 'reportes' %}"><span class="icon">📈</span><span>Reportes</span></a></li>
+<li><a href="{% url 'logout' %}"><span class="icon">🚪</span><span>Cerrar sesión</span></a></li>
+{% endblock %}
+
+{% block page_title %}Reportes del Sistema{% endblock %}
+{% block page_subtitle %}Consultas ORM - Evaluación 3{% endblock %}
+
+{% block extra_css %}
+<style>
+  .bp-pregunta {
+    border-left: 4px solid var(--bp-accent);
+    padding-left: 1rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--bp-text-muted);
+    font-style: italic;
+  }
+  .bp-nivel { font-size: 0.75rem; text-transform: uppercase; font-weight: 700; }
+  .nivel-basico { color: var(--bp-success); }
+  .nivel-intermedio { color: var(--bp-warning); }
+  .nivel-avanzado { color: var(--bp-purple); }
+  .nivel-analisis { color: var(--bp-danger); }
+  .badge-num { display: inline-block; background: var(--bp-accent); color: #fff; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.8rem; margin-right: 0.5rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+  <div class="d-flex justify-content-between align-items-start">
+    <div>
+      <h1>Reportes del Sistema</h1>
+      <p class="bp-muted">20 consultas ORM de la Evaluación 3 - Consultas realizadas directamente a la base de datos MySQL a través del ORM de Django.</p>
+    </div>
+    <div class="text-end">
+      <span class="badge-num">P1-P5</span>
+      <span class="badge-num">P6-P12</span>
+      <span class="badge-num">P13-P17</span>
+      <span class="badge-num">P18-P20</span>
+    </div>
+  </div>
+</div>
+
+{% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags|default:'info' }} mx-4 mb-3">{{ m }}</div>{% endfor %}{% endif %}
+
+<!-- ===================================================================== -->
+<!-- NIVEL BÁSICO: Preguntas 1-5                                           -->
+<!-- ===================================================================== -->
+<div class="bp-card mb-3">
+  <div class="bp-card-header">
+    <h2>Nivel Básico</h2>
+    <span class="bp-nivel nivel-basico">Básico</span>
+  </div>
+  <div class="bp-card-body">
+
+    <!-- P1 -->
+    <div class="mb-4">
+      <div class="bp-pregunta">1. Básico - ¿Cuáles son todos los clientes registrados en el sistema?</div>
+      <div class="bp-table-container">
+        <table class="bp-table">
+          <thead>
+            <tr><th>Nombre</th><th>Apellido</th><th>RUT</th><th>Email</th><th>Teléfono</th><th>Activo</th><th>Fecha Registro</th></tr>
+          </thead>
+          <tbody>
+            {% for c in todos_clientes %}
+            <tr>
+              <td>{{ c.nombre }}</td>
+              <td>{{ c.apellido }}</td>
+              <td>{{ c.rut|default:'—' }}</td>
+              <td>{{ c.email|default:'—' }}</td>
+              <td>{{ c.telefono|default:'—' }}</td>
+              <td>{% if c.activo %}<span class="bp-badge bp-badge-activa">Sí</span>{% else %}<span class="bp-badge bp-badge-bloqueada">No</span>{% endif %}</td>
+              <td>{{ c.fecha_registro|date:'d/m/Y H:i' }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center bp-muted py-4">No hay clientes registrados.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="bp-muted small mt-2"><strong>Consulta ORM:</strong> <code>Cliente.objects.all().order_by('apellido', 'nombre')</code></p>
+    </div>
+
+    <!-- P2 -->
+    <div class="mb-4">
+      <div class="bp-pregunta">2. Básico - ¿Cuántas tarjetas se encuentran activas, bloqueadas o inactivas?</div>
+      <div class="bp-stats" style="gap: 1rem;">
+        <div class="bp-stat-card">
+          <div class="bp-icon bg-blue">💳</div>
+          <div class="bp-info">
+            <h3>{{ tarjetas_activas }}</h3>
+            <p>Tarjetas activas</p>
+          </div>
+        </div>
+        <div class="bp-stat-card">
+          <div class="bp-icon bg-orange">💳</div>
+          <div class="bp-info">
+            <h3>{{ tarjetas_bloqueadas }}</h3>
+            <p>Tarjetas bloqueadas</p>
+          </div>
+        </div>
+        <div class="bp-stat-card">
+          <div class="bp-icon bg-red">💳</div>
+          <div class="bp-info">
+            <h3>{{ tarjetas_inactivas }}</h3>
+            <p>Tarjetas inactivas</p>
+          </div>
+        </div>
+      </div>
+      <p class="bp-muted small mt-2"><strong>Consultas ORM:</strong> <code>Tarjeta.objects.filter(estado='Activa').count()</code>, <code>Tarjeta.objects.filter(estado='Bloqueada').count()</code>, <code>Tarjeta.objects.filter(estado='Inactiva').count()</code></p>
+    </div>
+
+    <!-- P3 -->
+    <div class="mb-4">
+      <div class="bp-pregunta">3. Básico - ¿Cuáles son las tarjetas asociadas a un cliente seleccionado?</div>
+      <form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-3">
+        <select name="cliente_id" class="form-select bp-input" required>
+          <option value="">-- Seleccionar cliente --</option>
+          {% for c in clientes %}
+          <option value="{{ c.id }}" {% if cliente_seleccionado and c.id == cliente_seleccionado.id %}selected{% endif %}>{{ c.nombre }} {{ c.apellido }} ({{ c.rut|default:'—' }})</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-beatpay" type="submit">Buscar tarjetas</button>
+        <a class="btn btn-outline-secondary" href="{% url 'reportes' %}">Limpiar</a>
+      </form>
+      {% if cliente_seleccionado %}
+      <div class="alert alert-info"><strong>Cliente:</strong> {{ cliente_seleccionado.nombre }} {{ cliente_seleccionado.apellido }} - {{ cliente_seleccionado.rut|default:'—' }}</div>
+      {% endif %}
+      <div class="bp-table-container">
+        <table class="bp-table">
+          <thead>
+            <tr><th>Número</th><th>Tipo</th><th>Estado</th><th>Saldo</th><th>Banco</th><th>Fecha Emisión</th></tr>
+          </thead>
+          <tbody>
+            {% for t in tarjetas_cliente %}
+            <tr>
+              <td><b>{{ t.numero }}</b></td>
+              <td>{{ t.tipo }}</td>
+              <td>
+                {% if t.estado == 'Activa' %}<span class="bp-badge bp-badge-activa">Activa</span>
+                {% elif t.estado == 'Bloqueada' %}<span class="bp-badge" style="background:#f59e0b;color:#fff;">Bloqueada</span>
+                {% else %}<span class="bp-badge bp-badge-bloqueada">Inactiva</span>{% endif %}
+              </td>
+              <td>${{ t.saldo }}</td>
+              <td>{{ t.banco.nombre }}</td>
+              <td>{{ t.fecha_emision }}</td>
+            </tr>
+            {% empty %}
+            {% if cliente_seleccionado %}
+            <tr><td colspan="6" class="text-center bp-muted py-4">Este cliente no tiene tarjetas asociadas.</td></tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="bp-muted small mt-2"><strong>Consulta ORM:</strong> <code>Tarjeta.objects.filter(cliente=cliente_seleccionado)</code></p>
+    </div>
+
+    <!-- P4 -->
+    <div class="mb-4">
+      <div class="bp-pregunta">4. Básico - ¿Cuáles son los últimos 10 movimientos registrados?</div>
+      <div class="bp-table-container">
+        <table class="bp-table">
+          <thead>
+            <tr><th>Fecha</th><th>Origen</th><th>Destino</th><th class="text-end">Monto</th><th>Estado</th><th>Descripción</th></tr>
+          </thead>
+          <tbody>
+            {% for m in ultimos_10 %}
+            <tr>
+              <td>{{ m.fecha|date:'d/m/Y H:i' }}</td>
+              <td>{{ m.origen.alias|default:m.origen.uuid|slice:':8' }}...</td>
+              <td>{{ m.destino.alias|default:m.destino.uuid|slice:':8' }}...</td>
+              <td class="text-end">${{ m.monto }}</td>
+              <td>
+                {% if m.estado == 'Completado' %}<span class="bp-badge bp-badge-completado">Completado</span>
+                {% elif m.estado == 'Pendiente' %}<span class="bp-badge bp-badge-pendiente">Pendiente</span>
+                {% else %}<span class="bp-badge bp-badge-rechazado">Rechazado</span>{% endif %}
+              </td>
+              <td>{{ m.descripcion|default:'—' }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center bp-muted py-4">No hay movimientos registrados.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="bp-muted small mt-2"><strong>Consulta ORM:</strong> <code>Movimiento.objects.select_related(...).order_by('-fecha')[:10]</code></p>
+    </div>
+
+    <!-- P5 -->
+    <div class="mb-4">
+      <div class="bp-pregunta">5. Básico - ¿Cuántos movimientos se han registrado durante el día?</div>
+      <div class="bp-stats" style="gap: 1rem;">
+        <div class="bp-stat-card">
+          <div class="bp-icon bg-green">📅</div>
+          <div class="bp-info">
+            <h3>{{ hoy|date:'d/m/Y' }}</h3>
+            <p>Movimientos hoy</p>
+          </div>
+        </div>
+        <div class="bp-stat-card">
+          <div class="bp-icon bg-blue">🔢</div>
+          <div class="bp-info">
+            <h3>{{ movimientos_dia }}</h3>
+            <p>Total registros</p>
+          </div>
+        </div>
+      </div>
+      <p class="bp-muted small mt-2"><strong>Consulta ORM:</strong> <code>Movimiento.objects.filter(fecha__date=date.today()).count()</code></p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===================================================================== -->
+<!-- NIVEL INTERMEDIO: Preguntas 6-12                                      -->
+<!-- ===================================================================== -->
+<div class="bp-card mb-3">
+  <div class="bp-card-header">
+    <h2>Nivel Intermedio</h2>
+    <span class="bp-nivel nivel-intermedio">Intermedio</span>
+  </div>
+  <div class="bp-card-body">
+
+    <!-- P6 -->
+    <div class="mb-4">
+      <div class="bp-pregunta">6. Intermedio - ¿Cuáles son los movimientos enviados desde una tarjeta interna específica?</div>
+      <form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-3">
+        <select name="tarjeta_origen" class="form-select bp-input" required>
+          <option value="">-- Seleccionar tarjeta interna --</option>
+          {% for t in tarjetas_internas %}
+          <option value="{{ t.id }}" {% if tarjeta_origen_sel and t.id == tarjeta_origen_sel.id %}selected{% endif %}>{{ t.numero }} - {{ t.cliente.nombre }} {{ t.cliente.apellido }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-beatpay" type="submit">Buscar enviados</button>
+        <a class="btn btn-outline-secondary" href="{% url 'reportes' %}">Limpiar</a>
+      </form>
+      {% if tarjeta_origen_sel %}
+      <div class="alert alert-info"><strong>Origen:</strong> {{ tarjeta_origen_sel.numero }} ({{ tarjeta_origen_sel.cliente.nombre }})</div>
+      {% endif %}
+      <div class="bp-table-container">
+        <table class="bp-table">
+          <thead>
+            <tr><th>Fecha</th><th>Destino</th><th class="text-end">Monto</th><th>Estado</th><th>Descripción</th></tr>
+          </thead>
+          <tbody>
+            {% for m in movimientos_enviados %}
+            <tr>
+              <td>{{ m.fecha|date:'d/m/Y H:i' }}</td>
+              <td>{{ m.destino.alias|default:m.destino.uuid|slice:':8' }}...</td>
+              <td class="text-end">${{ m.monto }}</td>
+              <td>{{ m.estado }}</td>
+              <td>{{ m.descripcion|default:'—' }}</td>
+            </tr>
+            {% empty %}
+            {% if tarjeta_origen_sel %}
+            <tr><td colspan="5" class="text-center bp-muted py-4">Sin movimientos enviados desde esta tarjeta.</td></tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="bp-muted small mt-2"><strong>Consulta ORM:</strong> <code>Movimiento.objects.filter(origen__tarjeta=tarjeta_origen_sel)</code></p>
+    </div>
+
+    <!-- P7 -->
+    <div class="mb-4">
+      <div class="bp-pregunta">7. Intermedio - ¿Cuáles son los movimientos recibidos por una tarjeta interna específica?</div>
+      <form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-3">
+        <select name="tarjeta_destino" class="form-select bp-input" required>
+          <option value="">-- Seleccionar tarjeta interna --</option>
+          {% for t in tarjetas_internas %}
+          <option value="{{ t.id }}" {% if tarjeta_destino_sel and t.id == tarjeta_destino_sel.id %}selected{% endif %}>{{ t.numero }} - {{ t.cliente.nombre }} {{ t.cliente.apellido }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-beatpay" type="submit">Buscar recibidos</button>
+        <a class="btn btn-outline-secondary" href="{% url 'reportes' %}">Limpiar</a>
+      </form>
+      {% if tarjeta_destino_sel %}
+      <div class="alert alert-info"><strong>Destino:</strong> {{ tarjeta_destino_sel.numero }} ({{ tarjeta_destino_sel.cliente.nombre }})</div>
+      {% endif %}
+      <div class="bp-table-container">
+        <table class="bp-table">
+          <thead>
+            <tr><th>Fecha</th><th>Origen</th><th class="text-end">Monto</th><th>Estado</th><th>Descripción</th></tr>
+          </thead>
+          <tbody>
+            {% for m in movimientos_recibidos %}
+            <tr>
+              <td>{{ m.fecha|date:'d/m/Y H:i' }}</td>
+              <td>{{ m.origen.alias|default:m.origen.uuid|slice:':8' }}...</td>
+              <td class="text-end">${{ m.monto }}</td>
+              <td>{{ m.estado }}</td>
+              <td>{{ m.descripcion|default:'—' }}</td>
+            </tr>
+            {% empty %}
+            {% if tarjeta_destino_sel %}
+            <tr><td colspan="5" class="text-center bp-muted py-4">Sin movimientos recibidos en esta tarjeta.</td></tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="bp-muted small mt-2"><strong>Consulta ORM:</strong> <code>Movimiento.objects.filter(destino__tarjeta=tarjeta_destino_sel)</code></p>
+    </div>
+
+    <!-- P8 -->
+    <div class="mb-4">
+      <div class="bp-pregunta">8. Intermedio - ¿Qué movimientos se realizaron durante un rango de fechas?</div>
+      <form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-3">
+        <input name="fecha_inicio" class="form-control bp-input" type="date" value="{{ fecha_inicio|default:'' }}" placeholder="Desde">
+        <input name="fecha_fin" class="form-control bp-input" type="date" value="{{ fecha_fin|default:'' }}" placeholder="Hasta">
+        <button class="btn btn-beatpay" type="submit">Buscar rango</button>
+        <a class="btn btn-outline-secondary" href="{% url 'reportes' %}">Limpiar</a>
+      </form>
+      <div class="bp-table-container">
+        <table class="bp-table">
+          <thead>
+            <tr><th>Fecha</th><th>Origen</th><th>Destino</th><th class="text-end">Monto</th><th>Estado</th><th>Descripción</th></tr>
+          </thead>
+          <tbody>
+            {% for m in movimientos_rango %}
+            <tr>
+              <td>{{ m.fecha|date:'d/m/Y H:i' }}</td>
+              <td>{{ m.origen.alias|default:m.origen.uuid|slice:':8' }}...</td>
+              <td>{{ m.destino.alias|default:m.destino.uuid|slice:':8' }}...</td>
+              <td class="text-end">${{ m.monto }}</td>
+              <td>{{ m.estado }}</td>
+              <td>{{ m.descripcion|default:'—' }}</td>
+            </tr>
+            {% empty %}
+            {% if fecha_inicio and fecha_fin %}
+            <tr><td colspan="6" class="text-center bp-muted py-4">No hay movimientos en ese rango de fechas.</td></tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="bp-muted small mt-2"><strong>Consulta ORM:</strong> <code>Movimiento.objects.filter(fecha__date__range=[fecha_inicio, fecha_fin])</code></p>
+    </div>
+
+    <!-- P9 -->
+    <div class="mb-4">
+      <div class="bp-pregunta">9. Intermedio - ¿Cuáles son las transferencias realizadas hacia instrumentos financieros de Tenpo?</div>
+      <div class="bp-table-container">
+        <table class="bp-table">
+          <thead>
+            <tr><th>Fecha</th><th>Origen</th><th>Destino (Tenpo)</th><th class="text-end">Monto</th><th>Estado</th></tr>
+          </thead>
+          <tbody>
+            {% for m in movimientos_tenpo %}
+            <tr>
+              <td>{{ m.fecha|date:'d/m/Y H:i' }}</td>
+              <td>{{ m.origen.alias|default:m.origen.uuid|slice:':8' }}...</td>
+              <td>{{ m.destino.alias|default:m.destino.uuid|slice:':8' }}... ({{ m.destino.banco.nombre }})</td>
+              <td class="text-end">${{ m.monto }}</td>
+              <td>{{ m.estado }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center bp-muted py-4">No hay transferencias hacia Tenpo.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="bp-muted small mt-2"><strong>Consulta ORM:</strong> <code>Movimiento.objects.filter(destino__banco__nombre__icontains='tenpo')</code></p>
+    </div>
+
+    <!-- P10 -->
+    <div class="mb-4">
+      <div class="bp-pregunta">10. Intermedio - ¿Cuáles son las transferencias recibidas desde instrumentos financieros de MACH?</div>
+      <div class="bp-table-container">
+        <table class="bp-table">
+          <thead>
+            <tr><th>Fecha</th><th>Origen (MACH)</th><th>Destino</th><th class="text-end">Monto</th><th>Estado</th></tr>
+          </thead>
+          <tbody>
+            {% for m in movimientos_mach %}
+            <tr>
+              <td>{{ m.fecha|date:'d/m/Y H:i' }}</td>
+              <td>{{ m.origen.alias|default:m.origen.uuid|slice:':8' }}... ({{ m.origen.banco.nombre }})</td>
+              <td>{{ m.destino.alias|default:m.destino.uuid|slice:':8' }}...</td>
+              <td class="text-end">${{ m.monto }}</td>
+              <td>{{ m.estado }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center bp-muted py-4">No hay transferencias desde MACH.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="bp-muted small mt-2"><strong>Consulta ORM:</strong> <code>Movimiento.objects.filter(origen__banco__nombre__icontains='mach')</code></p>
+    </div>
+
+    <!-- P11 -->
+    <div class="mb-4">
+      <div class="bp-pregunta">11. Intermedio - ¿Cuántos movimientos se encuentran pendientes, completados o rechazados?</div>
+      <div class="bp-stats" style="gap: 1rem;">
+        <div class="bp-stat-card">
+          <div class="bp-icon bg-orange">⏳</div>
+          <div class="bp-info">
+            <h3>{{ mov_pendientes }}</h3>
+            <p>Pendientes</p>
+          </div>
+        </div>
+        <div class="bp-stat-card">
+          <div class="bp-icon bg-green">✅</div>
+          <div class="bp-info">
+            <h3>{{ mov_completados }}</h3>
+            <p>Completados</p>
+          </div>
+        </div>
+        <div class="bp-stat-card">
+          <div class="bp-icon bg-red">❌</div>
+          <div class="bp-info">
+            <h3>{{ mov_rechazados }}</h3>
+            <p>Rechazados</p>
+          </div>
+        </div>
+      </div>
+      <p class="bp-muted small mt-2"><strong>Consultas ORM:</strong> <code>Movimiento.objects.filter(estado='Pendiente').count()</code>, <code>Movimiento.objects.filter(estado='Completado').count()</code>, <code>Movimiento.objects.filter(estado='Rechazado').count()</code></p>
+    </div>
+
+    <!-- P12 -->
+    <div class="mb-4">
+      <div class="bp-pregunta">12. Intermedio - ¿Cuáles son los 10 movimientos con mayor monto registrado?</div>
+      <div class="bp-table-container">
+        <table class="bp-table">
+          <thead>
+            <tr><th>#</th><th>Fecha</th><th>Origen</th><th>Destino</th><th class="text-end">Monto</th><th>Estado</th></tr>
+          </thead>
+          <tbody>
+            {% for m in top_10_montos %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ m.fecha|date:'d/m/Y H:i' }}</td>
+              <td>{{ m.origen.alias|default:m.origen.uuid|slice:':8' }}...</td>
+              <td>{{ m.destino.alias|default:m.destino.uuid|slice:':8' }}...</td>
+              <td class="text-end">${{ m.monto }}</td>
+              <td>{{ m.estado }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center bp-muted py-4">No hay movimientos registrados.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="bp-muted small mt-2"><strong>Consulta ORM:</strong> <code>Movimiento.objects.select_related(...).order_by('-monto')[:10]</code></p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===================================================================== -->
+<!-- NIVEL AVANZADO: Preguntas 13-17                                       -->
+<!-- ===================================================================== -->
+<div class="bp-card mb-3">
+  <div class="bp-card-header">
+    <h2>Nivel Avanzado</h2>
+    <span class="bp-nivel nivel-avanzado">Avanzado</span>
+  </div>
+  <div class="bp-card-body">
+
+    <!-- P13 -->
+    <div class="mb-4">
+      <div class="bp-pregunta">13. Avanzado - ¿Cuál es el monto total de transferencias enviadas por cada tarjeta interna durante un período?</div>
+      <form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-3">
+        <input name="periodo_inicio" class="form-control bp-input" type="date" value="{{ periodo_inicio|default:'' }}" placeholder="Desde">
+        <input name="periodo_fin" class="form-control bp-input" type="date" value="{{ periodo_fin|default:'' }}" placeholder="Hasta">
+        <button class="btn btn-beatpay" type="submit">Calcular</button>
+        <a class="btn btn-outline-secondary" href="{% url 'reportes' %}">Limpiar</a>
+      </form>
+      <div class="bp-table-container">
+        <table class="bp-table">
+          <thead>
+            <tr><th>Tarjeta</th><th>Cliente</th><th class="text-end">Total Enviado</th><th class="text-end">Cantidad</th></tr>
+          </thead>
+          <tbody>
+            {% for r in resumen_origen %}
+            <tr>
+              <td>{{ r.origen__tarjeta__numero }}</td>
+              <td>{{ r.origen__tarjeta__cliente__nombre }} {{ r.origen__tarjeta__cliente__apellido }}</td>
+              <td class="text-end">${{ r.total_enviado }}</td>
+              <td class="text-end">{{ r.cantidad }}</td>
+            </tr>
+            {% empty %}
+            {% if periodo_inicio and periodo_fin %}
+            <tr><td colspan="4" class="text-center bp-muted py-4">Sin datos en ese período.</td></tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="bp-muted small mt-2"><strong>Consulta ORM:</strong> <code>Movimiento.objects.filter(...).values(...).annotate(total_enviado=Sum('monto'), cantidad=Count('id')).order_by('-total_enviado')</code></p>
+    </div>
+
+    <!-- P14 -->
+    <div class="mb-4">
+      <div class="bp-pregunta">14. Avanzado - ¿Cuál es el monto total recibido por cada tarjeta interna durante un período?</div>
+      <div class="bp-table-container">
+        <table class="bp-table">
+          <thead>
+            <tr><th>Tarjeta</th><th>Cliente</th><th class="text-end">Total Recibido</th><th class="text-end">Cantidad</th></tr>
+          </thead>
+          <tbody>
+            {% for r in resumen_destino %}
+            <tr>
+              <td>{{ r.destino__tarjeta__numero }}</td>
+              <td>{{ r.destino__tarjeta__cliente__nombre }} {{ r.destino__tarjeta__cliente__apellido }}</td>
+              <td class="text-end">${{ r.total_recibido }}</td>
+              <td class="text-end">{{ r.cantidad }}</td>
+            </tr>
+            {% empty %}
+            {% if periodo_inicio and periodo_fin %}
+            <tr><td colspan="4" class="text-center bp-muted py-4">Sin datos en ese período.</td></tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="bp-muted small mt-2"><strong>Consulta ORM:</strong> <code>Movimiento.objects.filter(...).values(...).annotate(total_recibido=Sum('monto'), cantidad=Count('id')).order_by('-total_recibido')</code></p>
+    </div>
+
+    <!-- P15 -->
+    <div class="mb-4">
+      <div class="bp-pregunta">15. Avanzado - ¿Cuántos movimientos se han realizado entre dos tarjetas internas?</div>
+      <form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-3">
+        <select name="tarjeta1" class="form-select bp-input" required>
+          <option value="">-- Tarjeta 1 --</option>
+          {% for t in tarjetas_internas %}
+          <option value="{{ t.id }}" {% if movimientos_entre_tarjetas and t.id == tarjeta_origen_sel.id %}selected{% endif %}>{{ t.numero }}</option>
+          {% endfor %}
+        </select>
+        <select name="tarjeta2" class="form-select bp-input" required>
+          <option value="">-- Tarjeta 2 --</option>
+          {% for t in tarjetas_internas %}
+          <option value="{{ t.id }}">{{ t.numero }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-beatpay" type="submit">Buscar</button>
+        <a class="btn btn-outline-secondary" href="{% url 'reportes' %}">Limpiar</a>
+      </form>
+      <div class="bp-table-container">
+        <table class="bp-table">
+          <thead>
+            <tr><th>Fecha</th><th>Origen</th><th>Destino</th><th class="text-end">Monto</th><th>Estado</th></tr>
+          </thead>
+          <tbody>
+            {% for m in movimientos_entre_tarjetas %}
+            <tr>
+              <td>{{ m.fecha|date:'d/m/Y H:i' }}</td>
+              <td>{{ m.origen.alias|default:m.origen.uuid|slice:':8' }}...</td>
+              <td>{{ m.destino.alias|default:m.destino.uuid|slice:':8' }}...</td>
+              <td class="text-end">${{ m.monto }}</td>
+              <td>{{ m.estado }}</td>
+            </tr>
+            {% empty %}
+            {% if movimientos_entre_tarjetas is not None %}
+            <tr><td colspan="5" class="text-center bp-muted py-4">No hay movimientos entre esas tarjetas.</td></tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="bp-muted small mt-2"><strong>Consulta ORM:</strong> <code>Movimiento.objects.filter(Q(origen__tarjeta=t1, destino__tarjeta=t2) | Q(origen__tarjeta=t2, destino__tarjeta=t1))</code></p>
+    </div>
+
+    <!-- P16 -->
+    <div class="mb-4">
+      <div class="bp-pregunta">16. Avanzado - ¿Qué institución financiera externa ha recibido la mayor cantidad de transferencias desde el sistema?</div>
+      <div class="bp-card-body" style="padding: 1rem;">
+        {% if banco_externo_mas_envio %}
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h3>{{ banco_externo_mas_envio.destino__banco__nombre }}</h3>
+            <p class="bp-muted">{{ banco_externo_mas_envio.destino__banco__codigo }} - {{ banco_externo_mas_envio.cantidad }} transferencias recibidas</p>
+          </div>
+          <span class="badge" style="background:var(--bp-accent);color:#fff;">{{ banco_externo_mas_envio.cantidad }} ops</span>
+        </div>
+        {% else %}
+        <p class="bp-muted">No hay transferencias hacia bancos externos.</p>
+        {% endif %}
+      </div>
+      <p class="bp-muted small mt-2"><strong>Consulta ORM:</strong> <code>Movimiento.objects.filter(destino__banco__es_interno=False).values(...).annotate(cantidad=Count('id')).order_by('-cantidad')[:1]</code></p>
+    </div>
+
+    <!-- P17 -->
+    <div class="mb-4">
+      <div class="bp-pregunta">17. Avanzado - ¿Qué institución financiera externa ha enviado el mayor monto de dinero hacia tarjetas internas?</div>
+      <div class="bp-card-body" style="padding: 1rem;">
+        {% if banco_externo_mas_monto %}
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h3>{{ banco_externo_mas_monto.origen__banco__nombre }}</h3>
+            <p class="bp-muted">{{ banco_externo_mas_monto.origen__banco__codigo }} - ${{ banco_externo_mas_monto.total_enviado }} enviados ({{ banco_externo_mas_monto.cantidad }} ops)</p>
+          </div>
+          <span class="badge" style="background:var(--bp-accent);color:#fff;">${{ banco_externo_mas_monto.total_enviado }}</span>
+        </div>
+        {% else %}
+        <p class="bp-muted">No hay transferencias desde bancos externos hacia tarjetas internas.</p>
+        {% endif %}
+      </div>
+      <p class="bp-muted small mt-2"><strong>Consulta ORM:</strong> <code>Movimiento.objects.filter(origen__banco__es_interno=False, destino__tarjeta__instrumento__tipo='INTERNO').values(...).annotate(total_enviado=Sum('monto')).order_by('-total_enviado')[:1]</code></p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===================================================================== -->
+<!-- NIVEL ANÁLISIS: Preguntas 18-20                                       -->
+<!-- ===================================================================== -->
+<div class="bp-card mb-3">
+  <div class="bp-card-header">
+    <h2>Nivel Análisis</h2>
+    <span class="bp-nivel nivel-analisis">Análisis</span>
+  </div>
+  <div class="bp-card-body">
+
+    <!-- P18 -->
+    <div class="mb-4">
+      <div class="bp-pregunta">18. Análisis - ¿Cuál es el monto promedio de las transferencias completadas durante el último mes?</div>
+      <div class="bp-stats" style="gap: 1rem;">
+        <div class="bp-stat-card">
+          <div class="bp-icon bg-blue">📅</div>
+          <div class="bp-info">
+            <h3>{{ hace_un_mes|date:'d/m/Y' }}</h3>
+            <p>Desde (30 días)</p>
+          </div>
+        </div>
+        <div class="bp-stat-card">
+          <div class="bp-icon bg-green">💰</div>
+          <div class="bp-info">
+            <h3>${{ promedio_ultimo_mes.promedio|floatformat:0 }}</h3>
+            <p>Promedio por movimiento</p>
+          </div>
+        </div>
+        <div class="bp-stat-card">
+          <div class="bp-icon bg-blue">📊</div>
+          <div class="bp-info">
+            <h3>{{ promedio_ultimo_mes.cantidad }}</h3>
+            <p>Movimientos completados</p>
+          </div>
+        </div>
+        <div class="bp-stat-card">
+          <div class="bp-icon bg-purple">💵</div>
+          <div class="bp-info">
+            <h3>${{ promedio_ultimo_mes.total }}</h3>
+            <p>Monto total</p>
+          </div>
+        </div>
+      </div>
+      <p class="bp-muted small mt-2"><strong>Consulta ORM:</strong> <code>Movimiento.objects.filter(estado='Completado', fecha__date__gte=hace_un_mes).aggregate(promedio=Avg('monto'))</code></p>
+    </div>
+
+    <!-- P19 -->
+    <div class="mb-4">
+      <div class="bp-pregunta">19. Análisis - ¿Qué porcentaje de los movimientos corresponde a operaciones internas y qué porcentaje a operaciones con instituciones externas?</div>
+      <div class="bp-stats" style="gap: 1rem;">
+        <div class="bp-stat-card">
+          <div class="bp-icon bg-blue">🏠</div>
+          <div class="bp-info">
+            <h3>{{ pct_interno }}%</h3>
+            <p>Internos ({{ mov_internos }})</p>
+          </div>
+        </div>
+        <div class="bp-stat-card">
+          <div class="bp-icon bg-purple">🌐</div>
+          <div class="bp-info">
+            <h3>{{ pct_externo }}%</h3>
+            <p>Externos ({{ mov_externos }})</p>
+          </div>
+        </div>
+      </div>
+      <p class="bp-muted small mt-2"><strong>Consulta ORM:</strong> <code>Movimiento.objects.filter(origen__banco__es_interno=True, destino__banco__es_interno=True).count()</code> vs <code>total - internos</code></p>
+    </div>
+
+    <!-- P20 -->
+    <div class="mb-4">
+      <div class="bp-pregunta">20. Análisis - ¿Cómo se distribuyen los montos transferidos por mes durante el año seleccionado, diferenciando transferencias internas, entradas externas y salidas externas?</div>
+      <form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-3">
+        <select name="ano" class="form-select bp-input">
+          {% for a in años_disponibles %}
+          <option value="{{ a }}" {% if ano_seleccionado == a %}selected{% endif %}>{{ a }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-beatpay" type="submit">Ver año</button>
+      </form>
+      <div class="bp-table-container">
+        <table class="bp-table">
+          <thead>
+            <tr><th>Mes</th><th class="text-end">Internos</th><th class="text-end">Entradas Externas</th><th class="text-end">Salidas Externas</th><th class="text-end">Total Mes</th></tr>
+          </thead>
+          <tbody>
+            {% for d in distribucion_mensual %}
+            <tr>
+              <td>{{ d.nombre_mes }}</td>
+              <td class="text-end">${{ d.internos }}</td>
+              <td class="text-end">${{ d.entradas_externas }}</td>
+              <td class="text-end">${{ d.salidas_externas }}</td>
+              <td class="text-end fw-bold">${{ d.internos|add:d.entradas_externas|add:d.salidas_externas }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="bp-muted small mt-2"><strong>Consulta ORM:</strong> Agregaciones <code>Sum('monto')</code> filtradas por <code>fecha__year</code>, <code>fecha__month</code> y <code>es_interno</code> de origen y destino.</p>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
