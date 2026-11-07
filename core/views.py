@@ -8,10 +8,11 @@ from django.contrib.auth import login as auth_login
 from django.contrib.auth import logout as auth_logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.db.models import Q
 from django.shortcuts import redirect, render
 
-from .forms import EmisionForm, LoginForm, RegistroForm
 from .models import (
     Auditoria,
     Banco,
@@ -89,7 +90,54 @@ def _folio():
             return f
 
 
+def _entero(valor, default=None):
+    """Convierte texto a entero. Vacío usa `default`; texto inválido devuelve None."""
+    if valor in (None, ''):
+        return default
+    try:
+        return int(valor)
+    except (TypeError, ValueError):
+        return None
 
+
+def _validar_username(username):
+    if len(username) < 3:
+        return 'Mín. 3 caracteres, sin espacios ni @.'
+    if len(username) > 150:
+        return 'El usuario no puede superar los 150 caracteres.'
+    if ' ' in username or '@' in username:
+        return 'Mín. 3 caracteres, sin espacios ni @.'
+    return None
+
+
+def _validar_email(email):
+    if len(email) > 254:
+        return 'El email es demasiado largo.'
+    try:
+        validate_email(email)
+    except ValidationError:
+        return 'Ingresa un email válido.'
+    return None
+
+
+def _validar_alta(datos):
+    """Reglas de registro/emisión, ahora sin django.forms."""
+    errores = []
+    if len(datos['nombre']) < 2 or len(datos['nombre']) > 100:
+        errores.append('Ingresa un nombre de al menos 2 caracteres.')
+
+    error = _validar_username(datos['username'])
+    if error:
+        errores.append(error)
+
+    error = _validar_email(datos['email'])
+    if error:
+        errores.append(error)
+
+    if len(datos['password']) < 6:
+        errores.append('La clave debe tener al menos 6 caracteres.')
+
+    return errores
 
 
 def index(request):
@@ -102,30 +150,45 @@ def index(request):
 
 def register(request):
     if request.method == 'POST':
-        form = RegistroForm({
+        datos = {
             'nombre': request.POST.get('nombre', '').strip(),
             'username': request.POST.get('username', '').strip().lower(),
             'email': request.POST.get('email', '').strip().lower(),
             'password': request.POST.get('pass', ''),
-            'presupuesto': request.POST.get('pto', '').strip() or None,
-        })
-        if not form.is_valid():
-            for errs in form.errors.values():
-                for e in errs:
-                    messages.error(request, e)
-        elif User.objects.filter(username=form.cleaned_data['username']).exists():
+        }
+        errores = _validar_alta(datos)
+
+        pto = _entero(request.POST.get('pto', '').strip(), 100000)
+        if pto is None or pto < 0:
+            errores.append('El presupuesto debe ser un entero mayor o igual a 0.')
+
+        if errores:
+            for e in errores:
+                messages.error(request, e)
+        elif User.objects.filter(username=datos['username']).exists():
             messages.error(request, 'Ese usuario ya está registrado. Inicia sesión.')
         else:
-            d = form.cleaned_data
-            pto = d['presupuesto'] if d['presupuesto'] is not None else 100000
-            user = User.objects.create_user(username=d['username'], email=d['email'], password=d['password'], first_name=d['nombre'])
-            cliente = Cliente.objects.create(user=user, nombre=d['nombre'], email=d['email'])
+            user = User.objects.create_user(
+                username=datos['username'],
+                email=datos['email'],
+                password=datos['password'],
+                first_name=datos['nombre'],
+            )
+            cliente = Cliente.objects.create(
+                user=user,
+                nombre=datos['nombre'],
+                email=datos['email'],
+            )
             Cuenta.objects.create(user=user, presupuesto=pto)
-            tarjeta = Tarjeta.objects.create(cliente=cliente, banco=_banco_interno())
+            tarjeta = Tarjeta.objects.create(
+                cliente=cliente,
+                banco=_banco_interno(),
+            )
             _instrumento_interno(tarjeta)
-            _log(d['username'], 'registro', f'pto ${pto}')
+            _log(datos['username'], 'registro', f'pto ${pto}')
             auth_login(request, user)
             return redirect('dashboard')
+
     return render(request, 'register.html', {
         'presupuesto_default': 100000,
         'min_pass': 6,
@@ -134,24 +197,23 @@ def register(request):
 
 def login(request):
     if request.method == 'POST':
-        form = LoginForm({
-            'username': request.POST.get('username', '').strip().lower(),
-            'password': request.POST.get('pass', ''),
-        })
-        if form.is_valid():
-            d = form.cleaned_data
-            user = authenticate(request, username=d['username'], password=d['password'])
+        username = request.POST.get('username', '').strip().lower()
+        password = request.POST.get('pass', '')
+
+        if not username or not password:
+            messages.error(request, 'Ingresa usuario y contraseña.')
         else:
-            d, user = None, None
-        if user is None:
-            messages.error(request, 'Usuario o contraseña inválidos.')
-        else:
-            auth_login(request, user)
-            _log(d['username'], 'login')
-            next_url = request.POST.get('next') or request.GET.get('next')
-            if next_url:
-                return redirect(next_url)
-            return redirect('panel' if user.is_staff else 'dashboard')
+            user = authenticate(request, username=username, password=password)
+            if user is None:
+                messages.error(request, 'Usuario o contraseña inválidos.')
+            else:
+                auth_login(request, user)
+                _log(username, 'login')
+                next_url = request.POST.get('next') or request.GET.get('next')
+                if next_url:
+                    return redirect(next_url)
+                return redirect('panel' if user.is_staff else 'dashboard')
+
     return render(request, 'login.html')
 
 
@@ -341,30 +403,48 @@ def panel(request):
         messages.error(request, 'No tienes permiso para ver el panel.')
         return redirect('dashboard')
     if request.method == 'POST' and request.POST.get('action') == 'emitir':
-        form = EmisionForm({
+        datos = {
             'nombre': request.POST.get('nombre', '').strip(),
             'username': request.POST.get('username', '').strip().lower(),
             'email': request.POST.get('email', '').strip().lower(),
             'password': request.POST.get('pass', ''),
-            'saldo': request.POST.get('saldo', '').strip() or None,
-            'presupuesto': request.POST.get('pto', '').strip() or None,
-        })
-        if not form.is_valid():
-            for errs in form.errors.values():
-                for e in errs:
-                    messages.error(request, e)
-        elif User.objects.filter(username=form.cleaned_data['username']).exists():
+        }
+        errores = _validar_alta(datos)
+
+        saldo = _entero(request.POST.get('saldo', '').strip(), 0)
+        pto = _entero(request.POST.get('pto', '').strip(), 100000)
+
+        if saldo is None or saldo < 0:
+            errores.append('El saldo debe ser un entero mayor o igual a 0.')
+        if pto is None or pto < 0:
+            errores.append('El presupuesto debe ser un entero mayor o igual a 0.')
+
+        if errores:
+            for e in errores:
+                messages.error(request, e)
+        elif User.objects.filter(username=datos['username']).exists():
             messages.error(request, 'Ese usuario ya existe.')
         else:
-            d = form.cleaned_data
-            nuevo = User.objects.create_user(username=d['username'], email=d['email'], password=d['password'], first_name=d['nombre'])
-            cliente = Cliente.objects.create(user=nuevo, nombre=d['nombre'], email=d['email'])
-            Cuenta.objects.create(user=nuevo,
-                                  presupuesto=d['presupuesto'] if d['presupuesto'] is not None else 100000)
-            tarjeta = Tarjeta.objects.create(cliente=cliente, banco=_banco_interno(), saldo=d['saldo'] or 0)
+            nuevo = User.objects.create_user(
+                username=datos['username'],
+                email=datos['email'],
+                password=datos['password'],
+                first_name=datos['nombre'],
+            )
+            cliente = Cliente.objects.create(
+                user=nuevo,
+                nombre=datos['nombre'],
+                email=datos['email'],
+            )
+            Cuenta.objects.create(user=nuevo, presupuesto=pto)
+            tarjeta = Tarjeta.objects.create(
+                cliente=cliente,
+                banco=_banco_interno(),
+                saldo=saldo,
+            )
             _instrumento_interno(tarjeta)
-            _log(request.user.username, 'emitir', f'tarjeta para {d["username"]} (${tarjeta.saldo})')
-            messages.success(request, f'Tarjeta emitida para {d["username"]} con ${tarjeta.saldo}.')
+            _log(request.user.username, 'emitir', f'tarjeta para {datos["username"]} (${tarjeta.saldo})')
+            messages.success(request, f'Tarjeta emitida para {datos["username"]} con ${tarjeta.saldo}.')
     for u in User.objects.all():
         _tarjeta(u)
     clientes = list(User.objects.filter(is_staff=False).order_by('username'))
