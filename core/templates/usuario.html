@@ -13,7 +13,7 @@
 <div class="card bp-card mb-3"><div class="card-body">
 <div class="bp-stat"><span class="bp-muted">Nombre</span><span><b>{{ target.first_name|default:'—' }}</b></span></div>
 <div class="bp-stat"><span class="bp-muted">Email</span><span>{{ target.email|default:'—' }}</span></div>
-<div class="bp-stat"><span class="bp-muted">Saldo</span><span class="num-big">${{ cuenta.saldo }}</span></div>
+<div class="bp-stat"><span class="bp-muted">Saldo</span><span class="num-big">${{ tarjeta.saldo }}</span></div>
 <div class="bp-stat"><span class="bp-muted">Presupuesto</span><span class="num-big">${{ cuenta.presupuesto }}</span></div>
 <div class="bp-stat"><span class="bp-muted">Tarjeta {{ tarjeta.tipo }} {{ tarjeta.numero }}</span><span class="badge {% if tarjeta.estado == 'Activa' %}text-bg-success{% else %}text-bg-danger{% endif %}">{{ tarjeta.estado }}</span></div>
 <div class="bp-stat"><span class="bp-muted">Rol</span>{% if target.is_staff %}<span class="badge text-bg-primary">staff</span>{% else %}<span class="badge text-bg-secondary">usuario</span>{% endif %}</div>

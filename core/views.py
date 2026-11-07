@@ -12,7 +12,15 @@ from django.db.models import Q
 from django.shortcuts import redirect, render
 
 from .forms import EmisionForm, LoginForm, RegistroForm
-from .models import Auditoria, Cuenta, Tarjeta, Transaccion
+from .models import (
+    Auditoria,
+    Banco,
+    Cliente,
+    Cuenta,
+    InstrumentoFinanciero,
+    Tarjeta,
+    Transaccion,
+)
 
 # Datos mock en JSON (eventos y transacciones de ejemplo).
 DEMO_PATH = Path(__file__).resolve().parent / 'data' / 'demo.json'
@@ -28,8 +36,46 @@ def _cuenta(user):
     return cuenta
 
 
+def _banco_interno():
+    banco, _ = Banco.objects.get_or_create(
+        codigo='BEATPAY',
+        defaults={'nombre': 'BeatPay', 'es_interno': True},
+    )
+    return banco
+
+
+def _cliente(user):
+    cliente = Cliente.objects.filter(user=user).first()
+    if cliente is None:
+        cliente = Cliente.objects.create(
+            user=user,
+            nombre=user.first_name or user.username,
+            apellido=user.last_name,
+            email=user.email,
+        )
+    return cliente
+
+
+def _instrumento_interno(tarjeta):
+    instrumento, _ = InstrumentoFinanciero.objects.get_or_create(
+        tarjeta=tarjeta,
+        defaults={
+            'tipo': 'INTERNO',
+            'banco': _banco_interno(),
+            'titular': str(tarjeta.cliente)[:120],
+            'alias': f'Tarjeta {tarjeta.numero[-4:]}',
+        },
+    )
+    return instrumento
+
+
 def _tarjeta(user):
-    return Tarjeta.objects.get_or_create(cuenta=_cuenta(user))[0]
+    cliente = _cliente(user)
+    tarjeta = cliente.tarjetas.first()
+    if tarjeta is None:
+        tarjeta = Tarjeta.objects.create(cliente=cliente, banco=_banco_interno())
+        _instrumento_interno(tarjeta)
+    return tarjeta
 
 
 def _log(usuario, accion, detalle=''):
@@ -73,8 +119,10 @@ def register(request):
             d = form.cleaned_data
             pto = d['presupuesto'] if d['presupuesto'] is not None else 100000
             user = User.objects.create_user(username=d['username'], email=d['email'], password=d['password'], first_name=d['nombre'])
-            cuenta = Cuenta.objects.create(user=user, presupuesto=pto)
-            Tarjeta.objects.create(cuenta=cuenta)
+            cliente = Cliente.objects.create(user=user, nombre=d['nombre'], email=d['email'])
+            Cuenta.objects.create(user=user, presupuesto=pto)
+            tarjeta = Tarjeta.objects.create(cliente=cliente, banco=_banco_interno())
+            _instrumento_interno(tarjeta)
             _log(d['username'], 'registro', f'pto ${pto}')
             auth_login(request, user)
             return redirect('dashboard')
@@ -119,6 +167,7 @@ def dashboard(request):
     if request.user.is_staff:
         return redirect('panel')
     cuenta = _cuenta(request.user)
+    tarjeta = _tarjeta(request.user)
     if request.method == 'POST':
         action = request.POST.get('action')
         if action == 'solicitar_cupo':
@@ -150,30 +199,31 @@ def dashboard(request):
                 messages.error(request, 'No puedes transferirte a ti mismo.')
             elif not destino.is_active:
                 messages.error(request, 'Ese usuario está bloqueado.')
-            elif _tarjeta(request.user).estado != 'Activa':
+            elif tarjeta.estado != 'Activa':
                 messages.error(request, 'Tu tarjeta no está activa.')
             elif monto < 1000:
                 messages.error(request, 'Monto mínimo $1.000.')
-            elif monto > cuenta.saldo:
-                messages.error(request, f'Saldo insuficiente. Tienes ${cuenta.saldo}.')
+            elif monto > tarjeta.saldo:
+                messages.error(request, f'Saldo insuficiente. Tienes ${tarjeta.saldo}.')
             else:
-                antes, dest_antes = cuenta.saldo, destino_cuenta.saldo
-                cuenta.saldo -= monto
-                cuenta.save()
-                destino_cuenta.saldo += monto
-                destino_cuenta.save()
-                Transaccion.objects.create(cuenta=cuenta, evento=f'Transferencia a {destino.username}', monto=monto, tipo='PAGO', folio=_folio(), saldo_antes=antes, saldo_nuevo=cuenta.saldo)
-                Transaccion.objects.create(cuenta=destino_cuenta, evento=f'Transferencia de {request.user.username}', monto=monto, tipo='CARGA', folio=_folio(), saldo_antes=dest_antes, saldo_nuevo=destino_cuenta.saldo)
+                tarjeta_destino = _tarjeta(destino)
+                antes, dest_antes = tarjeta.saldo, tarjeta_destino.saldo
+                tarjeta.saldo -= monto
+                tarjeta.save()
+                tarjeta_destino.saldo += monto
+                tarjeta_destino.save()
+                Transaccion.objects.create(cuenta=cuenta, evento=f'Transferencia a {destino.username}', monto=monto, tipo='PAGO', folio=_folio(), saldo_antes=antes, saldo_nuevo=tarjeta.saldo)
+                Transaccion.objects.create(cuenta=destino_cuenta, evento=f'Transferencia de {request.user.username}', monto=monto, tipo='CARGA', folio=_folio(), saldo_antes=dest_antes, saldo_nuevo=tarjeta_destino.saldo)
                 _log(request.user.username, 'transferir', f'${monto} a {destino.username}')
-                messages.success(request, f'Transferiste ${monto} a {destino.username}. Nuevo saldo: ${cuenta.saldo}.')
+                messages.success(request, f'Transferiste ${monto} a {destino.username}. Nuevo saldo: ${tarjeta.saldo}.')
         return redirect('dashboard')
     ultimas = cuenta.transacciones.all()[:3]
-    numero = _tarjeta(request.user).numero.replace(' ', '')
+    numero = tarjeta.numero.replace(' ', '')
     return render(request, 'dashboard.html', {
         'usuario': request.user.first_name or request.user.username,
-        'saldo': cuenta.saldo,
+        'saldo': tarjeta.saldo,
         'pto': cuenta.presupuesto,
-        'tarjeta': _tarjeta(request.user).estado,
+        'tarjeta': tarjeta.estado,
         'ultimos4': numero[-4:],
         'solicitud': cuenta.solicitud_cupo,
         'ultimas': ultimas,
@@ -185,6 +235,7 @@ def cargar(request):
     if request.user.is_staff:
         return redirect('panel')
     cuenta = _cuenta(request.user)
+    tarjeta = _tarjeta(request.user)
     boleta = None
     if request.method == 'POST':
         try:
@@ -194,16 +245,16 @@ def cargar(request):
         if monto < 1000:
             messages.error(request, 'Monto mínimo $1.000.')
         else:
-            antes = cuenta.saldo
-            cuenta.saldo += monto
-            cuenta.save()
-            boleta = Transaccion.objects.create(cuenta=cuenta, evento='Carga BeatPay', monto=monto, tipo='CARGA', folio=_folio(), saldo_antes=antes, saldo_nuevo=cuenta.saldo)
+            antes = tarjeta.saldo
+            tarjeta.saldo += monto
+            tarjeta.save()
+            boleta = Transaccion.objects.create(cuenta=cuenta, evento='Carga BeatPay', monto=monto, tipo='CARGA', folio=_folio(), saldo_antes=antes, saldo_nuevo=tarjeta.saldo)
             _log(request.user.username, 'cargar', f'${monto}')
-            messages.success(request, f'Carga exitosa. Nuevo saldo: ${cuenta.saldo}.')
+            messages.success(request, f'Carga exitosa. Nuevo saldo: ${tarjeta.saldo}.')
     return render(request, 'cargar.html', {
         'monto_min': 1000,
         'monto_default': 50000,
-        'saldo': cuenta.saldo,
+        'saldo': tarjeta.saldo,
         'boleta': boleta,
     })
 
@@ -213,6 +264,7 @@ def pagar(request):
     if request.user.is_staff:
         return redirect('panel')
     cuenta = _cuenta(request.user)
+    tarjeta = _tarjeta(request.user)
     boleta = None
     if request.method == 'POST':
         evento = request.POST.get('evento', '').strip()
@@ -220,27 +272,27 @@ def pagar(request):
             monto = int(request.POST.get('monto', ''))
         except (ValueError, TypeError):
             monto = 0
-        if _tarjeta(request.user).estado != 'Activa':
+        if tarjeta.estado != 'Activa':
             messages.error(request, 'Tu tarjeta no está activa.')
         elif monto < 1000:
             messages.error(request, 'Monto mínimo $1.000.')
-        elif monto > cuenta.saldo:
-            messages.error(request, f'Saldo insuficiente. Tienes ${cuenta.saldo}.')
+        elif monto > tarjeta.saldo:
+            messages.error(request, f'Saldo insuficiente. Tienes ${tarjeta.saldo}.')
         else:
             if monto > cuenta.presupuesto:
                 messages.info(request, f'Te pasaste del presupuesto (${cuenta.presupuesto}). Igual se pagó.')
-            antes = cuenta.saldo
-            cuenta.saldo -= monto
-            cuenta.save()
-            boleta = Transaccion.objects.create(cuenta=cuenta, evento=evento or 'Pago', monto=monto, tipo='PAGO', folio=_folio(), saldo_antes=antes, saldo_nuevo=cuenta.saldo)
+            antes = tarjeta.saldo
+            tarjeta.saldo -= monto
+            tarjeta.save()
+            boleta = Transaccion.objects.create(cuenta=cuenta, evento=evento or 'Pago', monto=monto, tipo='PAGO', folio=_folio(), saldo_antes=antes, saldo_nuevo=tarjeta.saldo)
             _log(request.user.username, 'pagar', f'${monto} en {boleta.evento}')
-            messages.success(request, f'Pago aprobado por ${monto}. Nuevo saldo: ${cuenta.saldo}.')
+            messages.success(request, f'Pago aprobado por ${monto}. Nuevo saldo: ${tarjeta.saldo}.')
     return render(request, 'pagar.html', {
         'monto_min': 1000,
         'monto_default': 15000,
         'eventos': _demo()['eventos'],
-        'saldo': cuenta.saldo,
-        'tarjeta': _tarjeta(request.user).estado,
+        'saldo': tarjeta.saldo,
+        'tarjeta': tarjeta.estado,
         'boleta': boleta,
     })
 
@@ -306,35 +358,39 @@ def panel(request):
         else:
             d = form.cleaned_data
             nuevo = User.objects.create_user(username=d['username'], email=d['email'], password=d['password'], first_name=d['nombre'])
-            cuenta = Cuenta.objects.create(user=nuevo,
-                                           saldo=d['saldo'] or 0,
-                                           presupuesto=d['presupuesto'] if d['presupuesto'] is not None else 100000)
-            Tarjeta.objects.create(cuenta=cuenta)
-            _log(request.user.username, 'emitir', f'tarjeta para {d["username"]} (${cuenta.saldo})')
-            messages.success(request, f'Tarjeta emitida para {d["username"]} con ${cuenta.saldo}.')
+            cliente = Cliente.objects.create(user=nuevo, nombre=d['nombre'], email=d['email'])
+            Cuenta.objects.create(user=nuevo,
+                                  presupuesto=d['presupuesto'] if d['presupuesto'] is not None else 100000)
+            tarjeta = Tarjeta.objects.create(cliente=cliente, banco=_banco_interno(), saldo=d['saldo'] or 0)
+            _instrumento_interno(tarjeta)
+            _log(request.user.username, 'emitir', f'tarjeta para {d["username"]} (${tarjeta.saldo})')
+            messages.success(request, f'Tarjeta emitida para {d["username"]} con ${tarjeta.saldo}.')
     for u in User.objects.all():
         _tarjeta(u)
-    clientes = list(User.objects.filter(is_staff=False).select_related('cuenta').order_by('username'))
-    cuentas = [u.cuenta for u in clientes]
+    clientes = list(User.objects.filter(is_staff=False).order_by('username'))
+    cuentas = [_cuenta(u) for u in clientes]
+    for u in clientes:
+        u.tarjeta_obj = _tarjeta(u)
     q = request.GET.get('q', '').strip()
     filtro = request.GET.get('filtro', '')
     usuarios = list(clientes)
     if q:
         usuarios = [u for u in usuarios if q.lower() in u.username.lower() or q.lower() in (u.first_name or '').lower()]
     if filtro == 'activas':
-        usuarios = [u for u in usuarios if u.cuenta.tarjeta.estado == 'Activa']
+        usuarios = [u for u in usuarios if u.tarjeta_obj.estado == 'Activa']
     elif filtro == 'bloqueadas':
-        usuarios = [u for u in usuarios if u.cuenta.tarjeta.estado != 'Activa']
+        usuarios = [u for u in usuarios if u.tarjeta_obj.estado != 'Activa']
     todos = clientes
+    saldo_total = sum(u.tarjeta_obj.saldo for u in clientes)
     return render(request, 'admin.html', {
         'usuarios': usuarios,
-        'solicitudes': [u for u in todos if u.cuenta.solicitud_cupo],
+        'solicitudes': [u for u, c in zip(clientes, cuentas) if c.solicitud_cupo],
         'q': q,
         'filtro': filtro,
         'n_usuarios': len(todos),
         'n_bloqueados': sum(1 for u in todos if not u.is_active),
-        'saldo_total': sum(c.saldo for c in cuentas),
-        'saldo_promedio': round(sum(c.saldo for c in cuentas) / max(len(cuentas), 1)),
+        'saldo_total': saldo_total,
+        'saldo_promedio': round(saldo_total / max(len(clientes), 1)),
         'tarjetas_activas': Tarjeta.objects.filter(estado='Activa').count(),
         'tarjetas_bloqueadas': Tarjeta.objects.exclude(estado='Activa').count(),
         'total_pagos': sum(t.monto for t in Transaccion.objects.filter(tipo='PAGO')),
