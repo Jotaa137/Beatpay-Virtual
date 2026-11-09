@@ -18,19 +18,61 @@ core/static/core/     style.css + app.js únicos (tema minimalista + oscuro)
 docs/                 documentación por fase (índice abajo)
 ```
 
-## Cómo correr
+## Cómo correr (WampServer + MySQL)
+
+### 1. Iniciar WampServer (MySQL en 127.0.0.1:3306)
+
+1. Abrir **WampServer** (`C:\wamp64\wampmanager.exe` o ícono verde en bandeja de Windows).
+2. Esperar a que el ícono se ponga **verde** (Apache + MySQL iniciados).
+3. MySQL queda escuchando en `127.0.0.1:3306`, usuario `root`, **sin contraseña**.
+4. Base de datos: `beatpay_virtual` (codificación `utf8mb4` / `utf8mb4_unicode_ci`).
+
+> **Orden de encendido**: WampServer → HeidiSQL (opcional) → Django (`runserver`).
+>
+> **Orden de apagado**: Ctrl+C en Django → WampServer (clic derecho → "Stop all services" → "Exit").
+
+### 2. HeidiSQL (cliente gráfico de MySQL — opcional)
+
+HeidiSQL es solo para inspeccionar tablas y datos. No lo usa la aplicación Django.
+
+1. Abrir **HeidiSQL**.
+2. Nueva sesión: Host `127.0.0.1`, Puerto `3306`, Usuario `root`, Contraseña vacía.
+3. Conectar. Verás la base de datos `beatpay_virtual`.
+
+### 3. Entorno Python (una vez por PC)
+
 ```powershell
-# Solo la primera vez en cada PC
+# Crear y activar el entorno virtual (solo la primera vez)
 python -m venv venv
 .\venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python manage.py migrate
 
-# Uso diario
+# Instalar dependencias
+pip install -r requirements.txt
+
+# Si Activate.ps1 da error de ejecución:
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 .\venv\Scripts\Activate.ps1
-python manage.py runserver
+```
+
+### 4. Migraciones y superusuario
+
+```powershell
+.\venv\Scripts\python.exe manage.py check          # revisa que el proyecto esté sano
+.\venv\Scripts\python.exe manage.py migrate         # aplica migraciones a MySQL
+.\venv\Scripts\python.exe manage.py createsuperuser # crea tu admin (staff)
+```
+
+> `manage.py dbshell` **no funciona** con MySQL en este entorno. Usa `manage.py shell` o HeidiSQL para consultas SQL directas.
+
+### 5. Uso diario
+
+```powershell
+.\venv\Scripts\Activate.ps1
+.\venv\Scripts\python.exe manage.py runserver
 # http://127.0.0.1:8000/
 ```
+
+**Importante**: Siempre iniciar WampServer **antes** de correr Django, y apagar Django (`Ctrl+C`) **antes** de apagar WampServer.
 
 ## Cuentas demo (clave ambas: beatpay123)
 - admin → `admin` (staff, entra a `/panel`)
